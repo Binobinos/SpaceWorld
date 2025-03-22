@@ -67,5 +67,8 @@
         "level": "INFO",
         "file": "app.log",
         "format": "%(asctime)s - %(levelname)s - %(message)s"
-    }
+    },
+    "command_history": [
+        "spaceworld datatime time"
+    ]
 }

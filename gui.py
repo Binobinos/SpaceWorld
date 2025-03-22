@@ -1,16 +1,19 @@
 import datetime
-import sys
-import re
 import json
 import logging
+import os
+import re
+import sys
+
+from PySide6.QtCore import QEvent  # Добавьте этот импорт
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QMouseEvent, QIcon, QColor, QTextCharFormat, QSyntaxHighlighter, QFont
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QListWidget, QListWidgetItem, QStackedWidget,
     QTextEdit, QLineEdit, QScrollArea, QDialog, QGraphicsDropShadowEffect, QSlider, QComboBox
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QMouseEvent, QIcon, QColor, QTextCharFormat, QSyntaxHighlighter, QFont
-from PySide6.QtCore import QEvent  # Добавьте этот импорт
+
 
 def setup_logging(config):
     """
@@ -204,7 +207,7 @@ class CustomConsole(QWidget):
         self.output.append("(c) Binobinos official. Все права защищены.")
 
         # История команд
-        self.command_history = []
+        self.command_history = config['command_history']
         self.history_index = -1
 
         # Доступные команды
@@ -311,15 +314,65 @@ class CustomConsole(QWidget):
         """
         if command == "version":
             self.output.append("SpaceWorld Console v1.0")
+
         elif command.startswith("datatime"):
             command = command.split()[1]
             if command == "time":
-                pass
+                self.output.append(str(datetime.datetime.now().time()))
             elif command == "datatime":
                 self.output.append(str(datetime.datetime.now()))
             elif command == "data":
-                self.output.append(str(datetime.datetime.now()))
+                self.output.append(str(datetime.date.today()))
+            elif command == "week":
+                day_of_week = datetime.datetime.now().strftime("%A")
+                self.output.append(str(day_of_week))
+            elif command == "year":
+                now = datetime.datetime.now()
+                month = now.strftime("%B")
+                year = now.year
+                self.output.append(f"month {month}")
+                self.output.append(f"year {year}")
+
+
+        elif command.startswith("file"):
+            command_ = command
+            command = command.split()[1]
+            # spaceworld file create ~D:\SpaceWorld dock.txt
+            if command == "create":
+                subcommand = command_.split()[2]
+                print(command_)
+                args = command_[command_.find("~") + 1:].split()
+                if subcommand == "dir":
+                    if len(args) != 2:
+                        self.output.append(str("incorrect arguments"))
+                    else:
+                        print(args)
+                        print(args[0])
+                        try:
+                            os.mkdir(os.path.join(args[0],args[1]))
+                        except Exception as error:
+                            self.output.append(str(error))
+                        else:
+                            self.output.append(str(f"the {args[0]} dir was created in {os.path.join(os.path.join(args[0],args[1]))}"))
+                elif subcommand == "file":
+                    if len(args) != 2:
+                        self.output.append(str("incorrect arguments"))
+                    else:
+                        print(args)
+                        print(args[0])
+                        try:
+                            open(os.path.join(args[0], args[1]),'w')
+                        except Exception as error:
+                            self.output.append(str(error))
+                        else:
+                            self.output.append(
+                                str(f"the {args[0]} file was created in {os.path.join(os.path.join(args[0], args[1]))}"))
+
+
+
+
         else:
+            print(command)
             self.output.append(f"Unknown SpaceWorld command: {command}")
 
     def set_theme(self, theme_data):
@@ -397,7 +450,7 @@ class MainWindow(QMainWindow):
         setup_logging(self.config)
         self.init_ui()
         self.apply_theme(self.config["window"]["theme"])
-        self.dragging = False  # Флаг для перемещения окна
+        self.dragging = True  # Флаг для перемещения окна
         self.offset = None  # Смещение для корректного перемещения
 
     def init_ui(self):
