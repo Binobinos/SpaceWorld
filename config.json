@@ -3,8 +3,8 @@
         "width": 800,
         "height": 600,
         "theme": "blue",
-        "border_radius": "10px",
-        "default_icon": "default_icon.png",
+        "border_radius": "15px",
+        "default_icon": "app_icon.png",
         "title": "Space World",
         "shadow": {
             "blur_radius": 15,

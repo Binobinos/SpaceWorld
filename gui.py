@@ -142,8 +142,6 @@ class CustomTitleBar(QWidget):
         layout.addWidget(self.maximize_btn)
         layout.addWidget(self.close_btn)
 
-        self.start_pos = None
-
     def toggle_maximize(self):
         """
         Переключает между полноэкранным и обычным режимом окна.
@@ -153,28 +151,6 @@ class CustomTitleBar(QWidget):
             parent.showNormal()
         else:
             parent.showMaximized()
-
-    def mousePressEvent(self, event: QMouseEvent):
-        """
-        Обрабатывает нажатие мыши для перемещения окна.
-        """
-        if event.button() == Qt.LeftButton:
-            self.start_pos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event: QMouseEvent):
-        """
-        Обрабатывает перемещение мыши для перемещения окна.
-        """
-        if self.start_pos:
-            delta = event.globalPosition().toPoint() - self.start_pos
-            self.parent().move(self.parent().pos() + delta)
-            self.start_pos = event.globalPosition().toPoint()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        """
-        Обрабатывает отпускание мыши.
-        """
-        self.start_pos = None
 
 
 class ConsoleHighlighter(QSyntaxHighlighter):
@@ -196,6 +172,7 @@ class ConsoleHighlighter(QSyntaxHighlighter):
         for keyword in self.keywords:
             for match in re.finditer(rf"\b{keyword}\b", text, re.IGNORECASE):
                 self.setFormat(match.start(), match.end() - match.start(), self.keyword_format)
+
 
 class CustomConsole(QWidget):
     """
@@ -420,6 +397,8 @@ class MainWindow(QMainWindow):
         setup_logging(self.config)
         self.init_ui()
         self.apply_theme(self.config["window"]["theme"])
+        self.dragging = False  # Флаг для перемещения окна
+        self.offset = None  # Смещение для корректного перемещения
 
     def init_ui(self):
         """
@@ -494,6 +473,28 @@ class MainWindow(QMainWindow):
             self.config["window"]["width"],
             self.config["window"]["height"]
         )
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """
+        Обрабатывает нажатие мыши для перемещения окна.
+        """
+        if event.button() == Qt.LeftButton:
+            self.dragging = True
+            self.offset = event.globalPosition().toPoint() - self.pos()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """
+        Обрабатывает перемещение мыши для перемещения окна.
+        """
+        if self.dragging and self.offset:
+            self.move(event.globalPosition().toPoint() - self.offset)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """
+        Обрабатывает отпускание мыши.
+        """
+        self.dragging = False
+        self.offset = None
 
     def load_utilities(self):
         """
