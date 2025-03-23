@@ -3,6 +3,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QPushButton, QLabel, QDialog, QSlider, QComboBox
 )
 
+from config import load_config
+
 
 class SettingsDialog(QDialog):
     """
@@ -16,9 +18,10 @@ class SettingsDialog(QDialog):
         self.layout = QVBoxLayout(self)
 
         # Выбор темы
+        self.config = load_config()
         self.theme_label = QLabel("Select Theme:")
         self.theme_combobox = QComboBox()
-        self.theme_combobox.addItems(["dark", "light", "blue"])
+        self.theme_combobox.addItems(self.config["themes"])
         self.theme_combobox.setCurrentText(parent.config["window"]["theme"])
         self.layout.addWidget(self.theme_label)
         self.layout.addWidget(self.theme_combobox)

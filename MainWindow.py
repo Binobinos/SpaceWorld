@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.main_screen)
 
         # Экран консоли
-        self.console_screen = CustomConsole(self.config, self)
+        self.console_screen = CustomConsole(self.config, self,self.config["themes"][self.config["window"]["theme"]])
         self.stacked_widget.addWidget(self.console_screen)
 
         # Кнопки управления
@@ -186,9 +186,13 @@ class MainWindow(QMainWindow):
         """
         self.config["window"]["theme"] = theme
         save_config(self.config)
-        theme_data = self.config["themes"][theme]
+        try:
+            theme_data = self.config["themes"][theme]
+        except KeyError:
+            theme_data = self.config["themes"]["dark"]  # Fallback to dark theme if theme is not found
 
-        style = f"""
+        # Применяем тему ко всему интерфейсу
+        self.setStyleSheet(f"""
             QMainWindow {{
                 background-color: {theme_data['main_bg']};
                 border-radius: {self.config["window"]["border_radius"]};
@@ -229,6 +233,5 @@ class MainWindow(QMainWindow):
                 font-size: 16px;
                 font-weight: bold;
             }}
-        """
-        self.setStyleSheet(style)
+        """)
         self.console_screen.set_theme(theme_data)

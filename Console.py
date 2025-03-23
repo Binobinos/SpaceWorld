@@ -18,32 +18,29 @@ from SettingsDialog import *
 
 
 class ConsoleHighlighter(QSyntaxHighlighter):
-    """
-    Подсветка синтаксиса для консоли.
-    """
-
-    def __init__(self, document):
+    def __init__(self, document, theme_data):
         super().__init__(document)
+        self.theme_data = theme_data
 
-        # Основные команды (синий)
+        # Основные команды
         self.keyword_format = QTextCharFormat()
-        self.keyword_format.setForeground(QColor("#569CD6"))  # Синий
+        self.keyword_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["keyword_color"]))
         self.keyword_format.setFontWeight(QFont.Bold)
         self.keywords = ["help", "clear", "echo", "spaceworld", "exit"]
 
-        # Подкоманды (зелёный)
+        # Подкоманды
         self.subcommand_format = QTextCharFormat()
-        self.subcommand_format.setForeground(QColor("#4EC9B0"))  # Зелёный
+        self.subcommand_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["subcommand_color"]))
         self.subcommands = ["file", "datatime", "dir"]
 
-        # Аргументы (оранжевый)
+        # Аргументы
         self.argument_format = QTextCharFormat()
-        self.argument_format.setForeground(QColor("#CE9178"))  # Оранжевый
+        self.argument_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["argument_color"]))
         self.arguments = ["create", "read", "write", "delete", "time", "date", "week", "year"]
 
-        # Пути и имена файлов (серый)
+        # Пути и имена файлов
         self.path_format = QTextCharFormat()
-        self.path_format.setForeground(QColor("#808080"))  # Серый
+        self.path_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["path_color"]))
 
     def highlightBlock(self, text):
         """
@@ -69,7 +66,7 @@ class ConsoleHighlighter(QSyntaxHighlighter):
             self.setFormat(match.start(), match.end() - match.start(), self.path_format)
 
 class CustomConsole(QWidget):
-    def __init__(self, config, main):
+    def __init__(self, config, main, theme_data):
         super().__init__()
         self.config = config
         self.layout = QVBoxLayout(self)
@@ -90,7 +87,7 @@ class CustomConsole(QWidget):
         self.layout.addWidget(self.output)
         self.layout.addWidget(self.input)
 
-        self.highlighter = ConsoleHighlighter(self.output.document())
+        self.highlighter = ConsoleHighlighter(self.output.document(), theme_data)
         self.output.append("SpaceWorld [Version 1.0.0]")
         self.output.append("(c) Binobinos official. Все права защищены.")
 
@@ -409,11 +406,8 @@ class CustomConsole(QWidget):
             return
 
         theme = parts[1].lower()
-        if theme in ["dark", "light", "blue"]:
-            self.MainWindow.apply_theme(theme)
-            self.append_output(f"Theme changed to {theme}.", color="#00FF00")
-        else:
-            self.append_output("Invalid theme. Available themes: dark, light, blue.", color="#FF0000")
+        self.MainWindow.apply_theme(theme)
+        self.append_output(f"Theme changed to {theme}.", color="#00FF00")
 
     def resize_window(self, command):
         """
