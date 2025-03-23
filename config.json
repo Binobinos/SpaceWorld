@@ -52,11 +52,11 @@
     "utilities": [
         {
             "name": "Sorted",
-            "icon": "icon1.png"
+            "icon": "photo1.png"
         },
         {
             "name": "Utility 2",
-            "icon": "icon2.png"
+            "icon": "C:\\Users\\Misha\\Downloads\\all files .png\\bomj.png"
         },
         {
             "name": "Utility 3",
@@ -69,6 +69,10 @@
         "format": "%(asctime)s - %(levelname)s - %(message)s"
     },
     "command_history": [
-        "spaceworld datatime time"
+        "spaceworld datatime time",
+        "spaceworld file read ~D:\\SpaceWorld\\text.txt",
+        "spaceworld file write ~D:\\SpaceWorld\\text.txt Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!123Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!",
+        "clear",
+        "spaceworld file read ~D:\\SpaceWorld\\text.txt"
     ]
 }
