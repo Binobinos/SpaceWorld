@@ -1,6 +1,6 @@
 {
     "window": {
-        "width": 800,
+        "width": 100,
         "height": 600,
         "theme": "blue",
         "border_radius": "15px",
@@ -68,11 +68,5 @@
         "file": "app.log",
         "format": "%(asctime)s - %(levelname)s - %(message)s"
     },
-    "command_history": [
-        "spaceworld datatime time",
-        "spaceworld file read ~D:\\SpaceWorld\\text.txt",
-        "spaceworld file write ~D:\\SpaceWorld\\text.txt Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!123Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!Hello, World!",
-        "clear",
-        "spaceworld file read ~D:\\SpaceWorld\\text.txt"
-    ]
+    "command_history": []
 }
