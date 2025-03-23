@@ -3,15 +3,17 @@ import os
 import random
 import re
 import socket
+import sys
 import threading
 
 import psutil
 import speedtest
-from PySide6.QtCore import QEvent
+from PySide6.QtCore import QEvent, QProcess
 from PySide6.QtGui import QColor, QTextCharFormat, QSyntaxHighlighter, QFont
 from PySide6.QtWidgets import (
-    QWidget, QTextEdit, QLineEdit
+    QWidget, QTextEdit, QLineEdit, QApplication
 )
+
 from SettingsDialog import *
 
 
@@ -66,14 +68,14 @@ class ConsoleHighlighter(QSyntaxHighlighter):
         for match in re.finditer(r"~[^\s]+", text):
             self.setFormat(match.start(), match.end() - match.start(), self.path_format)
 
-
 class CustomConsole(QWidget):
-    def __init__(self, config):
+    def __init__(self, config, main):
         super().__init__()
         self.config = config
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(5, 5, 5, 5)
         self.layout.setSpacing(10)
+        self.MainWindow = main
 
         # Поле вывода
         self.output = QTextEdit()
@@ -83,7 +85,7 @@ class CustomConsole(QWidget):
         # Поле ввода
         self.input = QLineEdit()
         self.input.returnPressed.connect(self.execute_command)
-        self.input.installEventFilter(self)  # Для обработки событий клавиш
+        self.input.installEventFilter(self)
 
         self.layout.addWidget(self.output)
         self.layout.addWidget(self.input)
@@ -98,9 +100,15 @@ class CustomConsole(QWidget):
 
         # Доступные команды
         self.available_commands = {
-            # "help": {},  # Пустой словарь, так как у команды help нет подкоманд
-            "clear": {},  # Пустой словарь, так как у команды clear нет подкоманд
-            "echo": {},  # Пустой словарь, так как у команды echo нет подкоманд
+            "clear": {},
+            "echo": {},
+            "exit": {},
+            "restart": {},
+            "settings": {},
+            "theme": {},
+            "resize": {},
+            "maximize": {},
+            "minimize": {},
             "spaceworld": {
                 "file": {
                     "create": {},
@@ -285,12 +293,22 @@ class CustomConsole(QWidget):
                 self.output.clear()
                 self.output.append("SpaceWorld [Version 1.0.0]")
                 self.output.append("(c) Binobinos official. Все права защищены.")
-            # elif command.lower() == "help":
-            # self.show_help()
             elif command.lower().startswith("echo"):
                 self.append_output(command[4:].strip())
-            elif command.lower().startswith("spaceworld"):
-                self.handle_spaceworld(command[10:].strip())
+            elif command.lower() == "exit":
+                self.MainWindow.close()  # Завершение работы приложения
+            elif command.lower() == "restart":
+                self.restart_application()  # Перезапуск приложения
+            elif command.lower() == "settings":
+                self.MainWindow.show_settings()  # Открытие настроек
+            elif command.lower().startswith("theme"):
+                self.change_theme(command)  # Изменение темы
+            elif command.lower().startswith("resize"):
+                self.resize_window(command)  # Изменение размера окна
+            elif command.lower() == "maximize":
+                self.MainWindow.showMaximized()  # Разворачивание окна
+            elif command.lower() == "minimize":
+                self.MainWindow.showMinimized()  # Сворачивание окна
             else:
                 self.append_output(f"Unknown command: {command}", color="#FF0000")
 
@@ -372,6 +390,47 @@ class CustomConsole(QWidget):
             self.append_output(str(random.randint(int(start), int(end))), color="#569CD6")
         else:
             self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
+
+    def restart_application(self):
+        """
+        Перезапускает приложение.
+        """
+        self.append_output("Restarting application...", color="#00FF00")
+        QApplication.quit()  # Закрываем текущее приложение
+        QProcess.startDetached(sys.executable, sys.argv)  # Запускаем новое
+
+    def change_theme(self, command):
+        """
+        Изменяет тему приложения.
+        """
+        parts = command.split()
+        if len(parts) != 2:
+            self.append_output("Usage: theme [dark/light/blue]", color="#FF0000")
+            return
+
+        theme = parts[1].lower()
+        if theme in ["dark", "light", "blue"]:
+            self.MainWindow.apply_theme(theme)
+            self.append_output(f"Theme changed to {theme}.", color="#00FF00")
+        else:
+            self.append_output("Invalid theme. Available themes: dark, light, blue.", color="#FF0000")
+
+    def resize_window(self, command):
+        """
+        Изменяет размер окна.
+        """
+        parts = command.split()
+        if len(parts) != 3:
+            self.append_output("Usage: resize [width] [height]", color="#FF0000")
+            return
+
+        try:
+            width = int(parts[1])
+            height = int(parts[2])
+            self.MainWindow.resize(width, height)
+            self.append_output(f"Window resized to {width}x{height}.", color="#00FF00")
+        except ValueError:
+            self.append_output("Invalid width or height. Please enter numbers.", color="#FF0000")
 
     def handle_spaceworld_file(self, command):
         command_ = command

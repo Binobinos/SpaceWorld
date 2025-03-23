@@ -1,8 +1,8 @@
 {
     "window": {
-        "width": 100,
+        "width": 800,
         "height": 600,
-        "theme": "blue",
+        "theme": "dark",
         "border_radius": "15px",
         "default_icon": "app_icon.png",
         "title": "Space World",
@@ -56,7 +56,7 @@
         },
         {
             "name": "Utility 2",
-            "icon": "C:\\Users\\Misha\\Downloads\\all files .png\\bomj.png"
+            "icon": "C:\\Users\\Misha\\Downloads\\all files .png\\IMG-20220623-WA0001 yy(1).png"
         },
         {
             "name": "Utility 3",
@@ -68,5 +68,11 @@
         "file": "app.log",
         "format": "%(asctime)s - %(levelname)s - %(message)s"
     },
-    "command_history": []
+    "command_history": [
+        "settings",
+        "theme ligth",
+        "theme light",
+        "theme dark",
+        "theme dark"
+    ]
 }

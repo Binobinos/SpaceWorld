@@ -1,9 +1,11 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QMouseEvent
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout,
     QPushButton, QLabel
 )
+
+import MainWindow
 
 
 class CustomTitleBar(QWidget):
@@ -40,19 +42,30 @@ class CustomTitleBar(QWidget):
             btn.setObjectName("window_button")
 
         self.minimize_btn.clicked.connect(parent.showMinimized)
-        self.maximize_btn.clicked.connect(self.toggle_maximize)
+        self.maximize_btn.clicked.connect(parent.toggle_maximize)
         self.close_btn.clicked.connect(parent.close)
 
         layout.addWidget(self.minimize_btn)
         layout.addWidget(self.maximize_btn)
         layout.addWidget(self.close_btn)
+        self.parent = parent
 
     def toggle_maximize(self):
         """
         Переключает между полноэкранным и обычным режимом окна.
         """
-        parent = self.parent()
-        if parent.isMaximized():
-            parent.showNormal()
+        parent = self.parent  # Получаем ссылку на MainWindow
+        if parent.isMaximized:
+            parent.showNormal()  # Вызываем метод из MainWindow
+            parent.is_maximized = False
         else:
-            parent.showMaximized()
+            parent.showMaximized()  # Вызываем метод из MainWindow
+            parent.is_maximized = True
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        """
+        Обрабатывает двойной клик по заголовку окна для разворачивания.
+        """
+        parent = self.parent  # Получаем ссылку на MainWindow
+        if event.button() == Qt.LeftButton:
+            parent.toggle_maximize()

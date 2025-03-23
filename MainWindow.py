@@ -1,32 +1,62 @@
 from PySide6.QtCore import QSize
+from PySide6.QtGui import QMouseEvent, QIcon
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QHBoxLayout,
+    QListWidget, QListWidgetItem, QStackedWidget,
+    QScrollArea, QGraphicsDropShadowEffect
+)
 
+from Console import *
 from CustomTitleBar import CustomTitleBar
 from SettingsDialog import *
-from PySide6.QtGui import QMouseEvent, QIcon, QColor
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QListWidget, QListWidgetItem, QStackedWidget,
-    QTextEdit, QScrollArea, QGraphicsDropShadowEffect
-)
-from Console import *
-from SettingsDialog import *
 from config import *
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.config = load_config()
-
+        self.is_maximized = False  # Флаг для отслеживания состояния окна
         self.init_ui()
         self.apply_theme(self.config["window"]["theme"])
-        self.dragging = True  # Флаг для перемещения окна
-        self.offset = None  # Смещение для корректного перемещения
+        self.dragging = True
+        self.offset = None
+
+
+    def toggle_maximize(self):
+        """
+        Переключает между полноэкранным и обычным режимом окна.
+        """
+        if not self.is_maximized:
+            self.showNormal()  # Вызываем метод из MainWindow
+            self.is_maximized = True
+        else:
+            self.showMaximized()  # Вызываем метод из MainWindow
+            self.is_maximized = False
+
+    def showMaximized(self):
+        """
+        Разворачивает окно на весь экран.
+        """
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        self.setGeometry(screen_geometry)
+
+    def showNormal(self):
+        """
+        Возвращает окно в нормальный режим.
+        """
+        self.setGeometry(
+            QApplication.primaryScreen().availableGeometry().center().x() - self.config["window"]["width"] // 2,
+            QApplication.primaryScreen().availableGeometry().center().y() - self.config["window"]["height"] // 2,
+            self.config["window"]["width"],
+            self.config["window"]["height"]
+        )
 
     def init_ui(self):
         """
         Инициализирует пользовательский интерфейс.
         """
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window | Qt.WindowMaximizeButtonHint)
         self.setWindowIcon(QIcon(self.config["window"]["default_icon"]))
 
         # Тень вокруг окна
@@ -64,7 +94,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.main_screen)
 
         # Экран консоли
-        self.console_screen = CustomConsole(self.config)
+        self.console_screen = CustomConsole(self.config, self)
         self.stacked_widget.addWidget(self.console_screen)
 
         # Кнопки управления
