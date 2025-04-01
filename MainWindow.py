@@ -1,12 +1,12 @@
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QMouseEvent, QIcon
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QHBoxLayout,
+    QMainWindow, QHBoxLayout,
     QListWidget, QListWidgetItem, QStackedWidget,
     QScrollArea, QGraphicsDropShadowEffect
 )
 
-from Console import *
+from console.Console import *
 from CustomTitleBar import CustomTitleBar
 from SettingsDialog import *
 from config import *

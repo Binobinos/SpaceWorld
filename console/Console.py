@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import random
 import re
@@ -42,9 +43,26 @@ class ConsoleHighlighter(QSyntaxHighlighter):
         self.path_format = QTextCharFormat()
         self.path_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["path_color"]))
 
+        # JSON-подсветка
+        self.json_key_format = QTextCharFormat()
+        self.json_key_format.setForeground(QColor("#569CD6"))  # Синий для ключей
+        self.json_key_format.setFontWeight(QFont.Bold)
+
+        self.json_string_format = QTextCharFormat()
+        self.json_string_format.setForeground(QColor("#CE9178"))  # Оранжевый для строк
+
+        self.json_number_format = QTextCharFormat()
+        self.json_number_format.setForeground(QColor("#B5CEA8"))  # Зеленый для чисел
+
+        self.json_boolean_format = QTextCharFormat()
+        self.json_boolean_format.setForeground(QColor("#569CD6"))  # Синий для true/false
+
+        self.json_null_format = QTextCharFormat()
+        self.json_null_format.setForeground(QColor("#569CD6"))  # Синий для null
+
     def highlightBlock(self, text):
         """
-        Подсвечивает ключевые слова, подкоманды, аргументы и пути в тексте.
+        Подсвечивает ключевые слова, подкоманды, аргументы, пути и JSON.
         """
         # Подсветка основных команд
         for keyword in self.keywords:
@@ -64,6 +82,33 @@ class ConsoleHighlighter(QSyntaxHighlighter):
         # Подсветка путей и имён файлов
         for match in re.finditer(r"~[^\s]+", text):
             self.setFormat(match.start(), match.end() - match.start(), self.path_format)
+
+        # Подсветка JSON
+        self.highlight_json(text)
+
+    def highlight_json(self, text):
+        """
+        Подсвечивает JSON-структуры.
+        """
+        # Ключи JSON
+        for match in re.finditer(r'"([^"]+)":', text):
+            self.setFormat(match.start(), match.end() - match.start(), self.json_key_format)
+
+        # Строки JSON
+        for match in re.finditer(r'"[^"]*"', text):
+            self.setFormat(match.start(), match.end() - match.start(), self.json_string_format)
+
+        # Числа JSON
+        for match in re.finditer(r'\b\d+\b', text):
+            self.setFormat(match.start(), match.end() - match.start(), self.json_number_format)
+
+        # Булевы значения JSON
+        for match in re.finditer(r'\b(true|false)\b', text):
+            self.setFormat(match.start(), match.end() - match.start(), self.json_boolean_format)
+
+        # Значение null
+        for match in re.finditer(r'\bnull\b', text):
+            self.setFormat(match.start(), match.end() - match.start(), self.json_null_format)
 
 class CustomConsole(QWidget):
     def __init__(self, config, main, theme_data):
@@ -102,7 +147,7 @@ class CustomConsole(QWidget):
             "exit": {},
             "restart": {},
             "settings": {},
-            "theme": {},
+            "theme": dict(self.config["themes"]),
             "resize": {},
             "maximize": {},
             "minimize": {},
@@ -266,6 +311,8 @@ class CustomConsole(QWidget):
                         for f in matching_files:
                             self.append_output(f"  - {f}", color="#808080")
 
+
+
     def execute_command(self):
         """
         Выполняет команду, введенную в консоли.
@@ -285,7 +332,7 @@ class CustomConsole(QWidget):
         if command:
             self.command_history.append(command)
             self.history_index = len(self.command_history)
-
+            self.config["command_history"].append(command)
             if command.lower() == "clear":
                 self.output.clear()
                 self.output.append("SpaceWorld [Version 1.0.0]")
@@ -296,18 +343,24 @@ class CustomConsole(QWidget):
                 self.MainWindow.close()  # Завершение работы приложения
             elif command.lower() == "restart":
                 self.restart_application()  # Перезапуск приложения
+            elif command == "config":
+                # Выводим конфиг с подсветкой
+                config_str = json.dumps(self.config, indent=4)
+                self.output.append(config_str)  # Подсветка сработает автоматически
             elif command.lower() == "settings":
                 self.MainWindow.show_settings()  # Открытие настроек
             elif command.lower().startswith("theme"):
                 self.change_theme(command)  # Изменение темы
             elif command.lower().startswith("resize"):
                 self.resize_window(command)  # Изменение размера окна
+            elif command.lower().startswith("spaceworld"):
+                self.handle_spaceworld(command)
             elif command.lower() == "maximize":
                 self.MainWindow.showMaximized()  # Разворачивание окна
             elif command.lower() == "minimize":
                 self.MainWindow.showMinimized()  # Сворачивание окна
             else:
-                self.append_output(f"Unknown command: {command}", color="#FF0000")
+                self.append_output(f"Unknown command1: {command}", color="#FF0000")
 
     def handle_confirmation(self, response):
         """
@@ -358,6 +411,13 @@ class CustomConsole(QWidget):
         """
         Обрабатывает команды, связанные с SpaceWorld.
         """
+        command = command.split()
+        if len(command) > 1:
+            command = " ".join(command[1:])
+            print(command)
+        else:
+            self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
+            return
         if command == "version":
             self.append_output("SpaceWorld Console v1.0", color="#569CD6")
         elif command.startswith("datatime"):
