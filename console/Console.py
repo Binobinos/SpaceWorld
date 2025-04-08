@@ -351,6 +351,7 @@ class CustomConsole(QWidget):
                 self.MainWindow.show_settings()  # Открытие настроек
             elif command.lower().startswith("theme"):
                 self.change_theme(command)  # Изменение темы
+                self.output.lower()
             elif command.lower().startswith("resize"):
                 self.resize_window(command)  # Изменение размера окна
             elif command.lower().startswith("spaceworld"):
@@ -424,6 +425,12 @@ class CustomConsole(QWidget):
             self.handle_spaceworld_datatime(command)
         elif command.startswith("file"):
             self.handle_spaceworld_file(command)
+        elif command == "sin":
+            for y in range(100):
+                strs = ""
+                for x in range(50):
+                    strs += "@"
+                self.append_output(strs, color="#5cde2c")
         elif command.startswith("dir"):
             self.handle_spaceworld_dir(command)
         elif command == "speedtest":
@@ -433,6 +440,11 @@ class CustomConsole(QWidget):
             ips = self.get_all_ip_addresses()
             for ip in ips:
                 self.append_output(str(ip), color="#5cde2c")
+
+        elif command.startswith("start"):
+            commands = command.split()[1:]
+            for file in commands:
+                os.startfile(file)
         elif command.startswith("random"):
             command = command.split()[1:]
             start = 0
