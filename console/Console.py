@@ -181,7 +181,7 @@ class CustomConsole(QWidget):
         else:
             self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
             return
-        if command == "version":
+        if command.strip().lower() == "version":
             self.append_output("SpaceWorld Console v1.0", color="#569CD6")
         elif command.startswith("datatime"):
             self.handle_spaceworld_datatime(command)
@@ -492,16 +492,13 @@ class CustomConsole(QWidget):
         command = command.split()[1]
         if command == "create":
             args = command_[command_.find("~") + 1:]
-            if len(args) != 1:
-                self.append_output("Incorrect arguments", color="#FF0000")
+            try:
+                open(os.path.join(args), 'w')
+            except Exception as error:
+                self.append_output(str(error), color="#FF0000")
             else:
-                try:
-                    open(args, 'w')
-                except Exception as error:
-                    self.append_output(str(error), color="#FF0000")
-                else:
-                    self.append_output(f"The {args} file was created in {os.path.join(os.path.join(args[0], args[1]))}",
-                                       color="#00FF00")
+                self.append_output(f"The {args} file was created in {os.path.join(os.path.join(args[0], args[1]))}",
+                                   color="#00FF00")
         elif command == "read":
             args = command_[command_.find("~") + 1:].split()
             if len(args) != 1:
