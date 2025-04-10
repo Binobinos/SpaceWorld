@@ -2,7 +2,6 @@ import json
 def load_config():
     """
     Загружает конфигурацию из файла config.json.
-    Если файл отсутствует, используется конфигурация по умолчанию.
     """
     try:
         with open("config/config.json", "r") as file:

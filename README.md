@@ -1,7 +1,7 @@
 
 <h1>SpaceWorld - Кастомизируемый интерфейс с консолью</h1>
 
-<p><img src="img/spaceworldmain.png" alt="SpaceWorld Screenshot" style="max-width: 100%;"></p>
+<p><img src="img/theme/blue.png" alt="SpaceWorld Screenshot" style="max-width: 100%;"></p>
 
 <p>SpaceWorld - это кастомизируемый графический интерфейс с встроенной консолью, поддерживающей множество команд и тем оформления.</p>
 
@@ -10,7 +10,8 @@
 <div class="features-list">
     <div class="feature-item">
         <div class="feature-icon" class="emoji">🎨</div>
-        <div><strong>16 готовых тем</strong> оформления (dark, light, cyberpunk, ocean и другие)</div>
+        <div><strong>16 готовых тем</strong> оформления (dark, light, cyberpunk, ocean и другие) <p><img src="img/theme/forest.png" alt="SpaceWorld Screenshot" style="max-width: 50%;"></p>
+</div>
     </div>
     <div class="feature-item">
         <div class="feature-icon" class="emoji">🖥️</div>

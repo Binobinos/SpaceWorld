@@ -6,6 +6,7 @@ import re
 import socket
 import sys
 import threading
+import time
 
 import psutil
 import speedtest
@@ -23,90 +24,75 @@ class ConsoleHighlighter(QSyntaxHighlighter):
         super().__init__(document)
         self.theme_data = theme_data
 
-        # Основные команды
         self.keyword_format = QTextCharFormat()
         self.keyword_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["keyword_color"]))
         self.keyword_format.setFontWeight(QFont.Bold)
         self.keywords = ["help", "clear", "echo", "spaceworld", "exit"]
 
-        # Подкоманды
         self.subcommand_format = QTextCharFormat()
         self.subcommand_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["subcommand_color"]))
         self.subcommands = ["file", "datatime", "dir"]
 
-        # Аргументы
         self.argument_format = QTextCharFormat()
         self.argument_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["argument_color"]))
         self.arguments = ["create", "read", "write", "delete", "time", "date", "week", "year"]
 
-        # Пути и имена файлов
         self.path_format = QTextCharFormat()
         self.path_format.setForeground(QColor(self.theme_data["syntax_highlighting"]["path_color"]))
 
-        # JSON-подсветка
         self.json_key_format = QTextCharFormat()
-        self.json_key_format.setForeground(QColor("#569CD6"))  # Синий для ключей
+        self.json_key_format.setForeground(QColor("#569CD6"))
         self.json_key_format.setFontWeight(QFont.Bold)
 
         self.json_string_format = QTextCharFormat()
-        self.json_string_format.setForeground(QColor("#CE9178"))  # Оранжевый для строк
+        self.json_string_format.setForeground(QColor("#CE9178"))
 
         self.json_number_format = QTextCharFormat()
-        self.json_number_format.setForeground(QColor("#B5CEA8"))  # Зеленый для чисел
+        self.json_number_format.setForeground(QColor("#B5CEA8"))
 
         self.json_boolean_format = QTextCharFormat()
-        self.json_boolean_format.setForeground(QColor("#569CD6"))  # Синий для true/false
+        self.json_boolean_format.setForeground(QColor("#569CD6"))
 
         self.json_null_format = QTextCharFormat()
-        self.json_null_format.setForeground(QColor("#569CD6"))  # Синий для null
+        self.json_null_format.setForeground(QColor("#569CD6"))
 
     def highlightBlock(self, text):
         """
         Подсвечивает ключевые слова, подкоманды, аргументы, пути и JSON.
         """
-        # Подсветка основных команд
         for keyword in self.keywords:
             for match in re.finditer(rf"\b{keyword}\b", text, re.IGNORECASE):
                 self.setFormat(match.start(), match.end() - match.start(), self.keyword_format)
 
-        # Подсветка подкоманд
         for subcommand in self.subcommands:
             for match in re.finditer(rf"\b{subcommand}\b", text, re.IGNORECASE):
                 self.setFormat(match.start(), match.end() - match.start(), self.subcommand_format)
 
-        # Подсветка аргументов
         for argument in self.arguments:
             for match in re.finditer(rf"\b{argument}\b", text, re.IGNORECASE):
                 self.setFormat(match.start(), match.end() - match.start(), self.argument_format)
 
-        # Подсветка путей и имён файлов
         for match in re.finditer(r"~[^\s]+", text):
             self.setFormat(match.start(), match.end() - match.start(), self.path_format)
 
-        # Подсветка JSON
         self.highlight_json(text)
 
     def highlight_json(self, text):
         """
         Подсвечивает JSON-структуры.
         """
-        # Ключи JSON
         for match in re.finditer(r'"([^"]+)":', text):
             self.setFormat(match.start(), match.end() - match.start(), self.json_key_format)
 
-        # Строки JSON
         for match in re.finditer(r'"[^"]*"', text):
             self.setFormat(match.start(), match.end() - match.start(), self.json_string_format)
 
-        # Числа JSON
         for match in re.finditer(r'\b\d+\b', text):
             self.setFormat(match.start(), match.end() - match.start(), self.json_number_format)
 
-        # Булевы значения JSON
         for match in re.finditer(r'\b(true|false)\b', text):
             self.setFormat(match.start(), match.end() - match.start(), self.json_boolean_format)
 
-        # Значение null
         for match in re.finditer(r'\bnull\b', text):
             self.setFormat(match.start(), match.end() - match.start(), self.json_null_format)
 
@@ -119,28 +105,32 @@ class CustomConsole(QWidget):
         self.layout.setSpacing(10)
         self.MainWindow = main
 
-        # Поле вывода
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         self.output.setLineWrapMode(QTextEdit.NoWrap)
 
-        # Поле ввода
         self.input = QLineEdit()
         self.input.returnPressed.connect(self.execute_command)
         self.input.installEventFilter(self)
 
         self.layout.addWidget(self.output)
         self.layout.addWidget(self.input)
-
+        self.art = r""" ____                        
+/ ___| _ __   __ _  ___ ___  
+\___ \| '_ \ / _` |/ __/ _ \ 
+ ___) | |_) | (_| | (_|  __/ 
+|____/| .__/ \__,_|\___\___| 
+\ \   |_|/ /__  _ __| | __| |
+ \ \ /\ / / _ \| '__| |/ _` |
+  \ V  V / (_) | |  | | (_| |
+   \_/\_/ \___/|_|  |_|\__,_|"""
         self.highlighter = ConsoleHighlighter(self.output.document(), theme_data)
         self.output.append("SpaceWorld [Version 1.0.0]")
         self.output.append("(c) Binobinos official. Все права защищены.")
-
-        # История команд
+        self.output.append(self.art)
         self.command_history = config.get('command_history', [])
         self.history_index = -1
 
-        # Доступные команды
         self.available_commands = {
             "clear": {},
             "echo": {},
@@ -167,15 +157,66 @@ class CustomConsole(QWidget):
                 "dir": {
                     "create": {},
                     "delete": {},
+                    "sorted": {}
                 },
                 "ip": {},
-                "speedtest": {}
+                "speedtest": {},
+                "version": {},
+                "start": {},
+                "random": {}
             },
         }
 
-        # Флаги для запроса подтверждения
         self.waiting_for_confirmation = False
         self.confirmation_command = None
+
+    def handle_spaceworld(self, command):
+        """
+        Обрабатывает команды, связанные с SpaceWorld.
+        """
+        command = command.split()
+        if len(command) > 1:
+            command = " ".join(command[1:])
+            print(command)
+        else:
+            self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
+            return
+        if command == "version":
+            self.append_output("SpaceWorld Console v1.0", color="#569CD6")
+        elif command.startswith("datatime"):
+            self.handle_spaceworld_datatime(command)
+        elif command.startswith("file"):
+            self.handle_spaceworld_file(command)
+        elif command.startswith("dir"):
+            self.handle_spaceworld_dir(command)
+        elif command == "speedtest":
+            speed_thread = threading.Thread(target=self.check_internet_speed)
+            speed_thread.start()
+        elif command == "ip":
+            ips = self.get_all_ip_addresses()
+            for ip in ips:
+                self.append_output(str(ip), color="#5cde2c")
+            speed_thread = threading.Thread(target=self.a)
+            speed_thread.start()
+
+        elif command.startswith("start"):
+            commands = command.split()[1:]
+            for file in commands:
+                os.startfile(file)
+        elif command.startswith("random"):
+            command = command.split()[1:]
+            start = 0
+            if len(command) == 1:
+                end = command[0]
+            elif len(command) == 2:
+                start = command[0]
+                end = command[1]
+            else:
+                self.append_output("Incorrect arguments", color="#FF0000")
+                return
+            self.append_output(str(random.randint(int(start), int(end))), color="#569CD6")
+        else:
+            self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
 
     def append_output(self, text, color=None, font=None):
         """
@@ -186,41 +227,46 @@ class CustomConsole(QWidget):
         if font:
             self.output.setCurrentFont(font)
         self.output.append(text)
-        # Возвращаем стандартные настройки
         self.output.setTextColor(QColor(self.config["themes"][self.config["window"]["theme"]]["text_color"]))
         self.output.setCurrentFont(QFont("Consolas", 12))
+
+    def remove_last_line(self):
+        """Удаляет последнюю строку в QTextEdit."""
+        cursor = self.output.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        cursor.select(cursor.SelectionType.BlockUnderCursor)
+        cursor.removeSelectedText()
 
     def check_internet_speed(self):
         st = speedtest.Speedtest()
 
-        print("Выбор лучшего сервера...")
+        self.append_output("Выбор лучшего сервера...", color="#4EC9B0")
         st.get_best_server()
+        self.append_output("Проверка скорости загрузки...", color="#4EC9B0")
+        download_speed = st.download() / 1000000
 
-        print("Проверка скорости загрузки...")
-        download_speed = st.download() / 1_000_000  # Переводим в Мбит/с
-
-        print("Проверка скорости выгрузки...")
-        upload_speed = st.upload() / 1_000_000  # Переводим в Мбит/с
+        self.append_output("Проверка скорости выгрузки...", color="#4EC9B0")
+        upload_speed = st.upload() / 1000000
 
         ping = st.results.ping
-
-        print("\nРезультаты теста скорости:")
-        print(f"Скорость загрузки: {download_speed:.2f} Мбит/с")
-        print(f"Скорость выгрузки: {upload_speed:.2f} Мбит/с")
-        print(f"Пинг: {ping:.2f} мс")
+        self.append_output("\nРезультаты теста скорости:", color="#4EC9B0")
+        self.append_output(f"Скорость загрузки: {download_speed:.2f} Мбит/с", color="#4EC9B0")
+        self.append_output(f"Скорость выгрузки: {upload_speed:.2f} Мбит/с", color="#4EC9B0")
+        self.append_output(f"Пинг: {ping:.2f} мс", color="#4EC9B0")
+        self.remove_last_line()
 
     def eventFilter(self, source, event):
         """
         Обрабатывает события клавиш для навигации по истории команд и автодополнения.
         """
         if event.type() == QEvent.Type.KeyPress and source == self.input:
-            if event.key() == Qt.Key_Up:  # Стрелка вверх
+            if event.key() == Qt.Key_Up:
                 self.navigate_history(-1)
                 return True
-            elif event.key() == Qt.Key_Down:  # Стрелка вниз
+            elif event.key() == Qt.Key_Down:
                 self.navigate_history(1)
                 return True
-            elif event.key() == Qt.Key_Tab:  # Tab для автодополнения
+            elif event.key() == Qt.Key_Tab:
                 self.auto_complete()
                 return True
         return super().eventFilter(source, event)
@@ -232,16 +278,13 @@ class CustomConsole(QWidget):
         if not self.command_history:
             return
 
-        # Обновляем индекс истории
         self.history_index += direction
 
-        # Ограничиваем индекс в пределах истории
         if self.history_index < 0:
             self.history_index = 0
         elif self.history_index >= len(self.command_history):
             self.history_index = len(self.command_history) - 1
 
-        # Устанавливаем текст из истории
         self.input.setText(self.command_history[self.history_index])
 
     def auto_complete(self):
@@ -251,48 +294,37 @@ class CustomConsole(QWidget):
         current_text = self.input.text().strip()
         if not current_text:
             return
-
-        # Разделяем введённый текст на части
         parts = current_text.split()
         if not parts:
             return
 
-        # Начинаем с корневого уровня команд
         current_level = self.available_commands
 
-        # Проходим по всем частям команды
         for i, part in enumerate(parts):
             part = part.lower()
             if part in current_level:
                 current_level = current_level[part]
             else:
-                # Если часть команды не найдена, ищем варианты автодополнения
                 matching_commands = [cmd for cmd in current_level.keys() if cmd.startswith(part)]
                 if matching_commands:
                     if len(matching_commands) == 1:
-                        # Если совпадение одно, подставляем его
                         parts[i] = matching_commands[0]
                         self.input.setText(" ".join(parts) + " ")
                     else:
-                        # Если совпадений несколько, выводим их в консоль
                         self.append_output("Доступные команды:", color="#569CD6")
                         for cmd in matching_commands:
                             self.append_output(f"  - {cmd}", color="#569CD6")
                     return
 
-        # Если все части команды найдены, предлагаем подкоманды
         if current_level:
             subcommands = list(current_level.keys())
             if len(subcommands) == 1:
-                # Если подкоманда одна, подставляем её
                 self.input.setText(" ".join(parts + [subcommands[0]]) + " ")
             else:
-                # Если подкоманд несколько, выводим их в консоль
                 self.append_output("Доступные подкоманды:", color="#4EC9B0")
                 for sub in subcommands:
                     self.append_output(f"  - {sub}", color="#4EC9B0")
 
-        # Автодополнение для путей
         if parts[-1].startswith("~"):
             path = parts[-1][1:]
             dir_path = os.path.dirname(path)
@@ -301,12 +333,10 @@ class CustomConsole(QWidget):
                 matching_files = [f for f in os.listdir(dir_path) if f.startswith(base_name)]
                 if matching_files:
                     if len(matching_files) == 1:
-                        # Если совпадение одно, подставляем его
                         new_path = os.path.join(dir_path, matching_files[0])
                         parts[-1] = "~" + new_path
                         self.input.setText(" ".join(parts) + " ")
                     else:
-                        # Если совпадений несколько, выводим их в консоль
                         self.append_output("Доступные файлы/папки:", color="#808080")
                         for f in matching_files:
                             self.append_output(f"  - {f}", color="#808080")
@@ -328,7 +358,6 @@ class CustomConsole(QWidget):
                 self.append_output("Please enter 'y' or 'n'.", color="#FF0000")
             return
 
-        # Добавляем команду в историю
         if command:
             self.command_history.append(command)
             self.history_index = len(self.command_history)
@@ -337,29 +366,29 @@ class CustomConsole(QWidget):
                 self.output.clear()
                 self.output.append("SpaceWorld [Version 1.0.0]")
                 self.output.append("(c) Binobinos official. Все права защищены.")
+                self.output.append(self.art)
             elif command.lower().startswith("echo"):
                 self.append_output(command[4:].strip())
             elif command.lower() == "exit":
-                self.MainWindow.close()  # Завершение работы приложения
+                self.MainWindow.close()
             elif command.lower() == "restart":
-                self.restart_application()  # Перезапуск приложения
+                self.restart_application()
             elif command == "config":
-                # Выводим конфиг с подсветкой
                 config_str = json.dumps(self.config, indent=4)
-                self.output.append(config_str)  # Подсветка сработает автоматически
+                self.output.append(config_str)
             elif command.lower() == "settings":
-                self.MainWindow.show_settings()  # Открытие настроек
+                self.MainWindow.show_settings()
             elif command.lower().startswith("theme"):
-                self.change_theme(command)  # Изменение темы
+                self.change_theme(command)
                 self.output.lower()
             elif command.lower().startswith("resize"):
-                self.resize_window(command)  # Изменение размера окна
+                self.resize_window(command)
             elif command.lower().startswith("spaceworld"):
                 self.handle_spaceworld(command)
             elif command.lower() == "maximize":
-                self.MainWindow.showMaximized()  # Разворачивание окна
+                self.MainWindow.showMaximized()
             elif command.lower() == "minimize":
-                self.MainWindow.showMinimized()  # Сворачивание окна
+                self.MainWindow.showMinimized()
             else:
                 self.append_output(f"Unknown command1: {command}", color="#FF0000")
 
@@ -368,7 +397,6 @@ class CustomConsole(QWidget):
         Обрабатывает ответ пользователя на запрос подтверждения.
         """
         if response == "y":
-            # Выполняем команду, которая ожидала подтверждения
             self.append_output(f"Executing command: {self.confirmation_command}", color="#00FF00")
             self.execute_confirmation_command()
         else:
@@ -398,67 +426,28 @@ class CustomConsole(QWidget):
     @staticmethod
     def get_all_ip_addresses():
         ip_addresses = []
-        # Получаем информацию о всех сетевых интерфейсах
         for interface, addrs in psutil.net_if_addrs().items():
             for addr in addrs:
-                if addr.family == socket.AF_INET:  # Проверяем, что это IPv4
+                if addr.family == socket.AF_INET:
                     ip_addresses.append(addr.address)
-                elif addr.family == socket.AF_INET6:  # Проверяем, что это IPv6
+                elif addr.family == socket.AF_INET6:
                     ip_addresses.append(addr.address)
 
         return ip_addresses
 
-    def handle_spaceworld(self, command):
-        """
-        Обрабатывает команды, связанные с SpaceWorld.
-        """
-        command = command.split()
-        if len(command) > 1:
-            command = " ".join(command[1:])
-            print(command)
-        else:
-            self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
-            return
-        if command == "version":
-            self.append_output("SpaceWorld Console v1.0", color="#569CD6")
-        elif command.startswith("datatime"):
-            self.handle_spaceworld_datatime(command)
-        elif command.startswith("file"):
-            self.handle_spaceworld_file(command)
-        elif command == "sin":
-            for y in range(100):
-                strs = ""
-                for x in range(50):
-                    strs += "@"
-                self.append_output(strs, color="#5cde2c")
-        elif command.startswith("dir"):
-            self.handle_spaceworld_dir(command)
-        elif command == "speedtest":
-            speed_thread = threading.Thread(target=self.check_internet_speed)
-            speed_thread.start()  # Запускаем поток
-        elif command == "ip":
-            ips = self.get_all_ip_addresses()
-            for ip in ips:
-                self.append_output(str(ip), color="#5cde2c")
-
-        elif command.startswith("start"):
-            commands = command.split()[1:]
-            for file in commands:
-                os.startfile(file)
-        elif command.startswith("random"):
-            command = command.split()[1:]
-            start = 0
-            if len(command) == 1:
-                end = command[0]
-            elif len(command) == 2:
-                start = command[0]
-                end = command[1]
-            else:
-                self.append_output("Incorrect arguments", color="#FF0000")
-                return
-            self.append_output(str(random.randint(int(start), int(end))), color="#569CD6")
-        else:
-            self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
+    def a(self):
+        while True:
+            c = 0
+            for i in range(11):
+                b = ""
+                for y in range(10):
+                    for x in range(10):
+                        b += "※"
+                    b += "\n"
+                self.output.append(b)
+                for x in range(11):
+                    self.remove_last_line()
+                    time.sleep(0.1)
 
     def restart_application(self):
         """

@@ -6,32 +6,30 @@ from PySide6.QtWidgets import (
     QScrollArea, QGraphicsDropShadowEffect
 )
 
-from console.Console import *
 from CustomTitleBar import CustomTitleBar
-from SettingsDialog import *
 from config import *
+from console.Console import *
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.config = load_config()
-        self.is_maximized = False  # Флаг для отслеживания состояния окна
+        self.is_maximized = False
         self.init_ui()
         self.apply_theme(self.config["window"]["theme"])
         self.dragging = True
         self.offset = None
-
 
     def toggle_maximize(self):
         """
         Переключает между полноэкранным и обычным режимом окна.
         """
         if not self.is_maximized:
-            self.showNormal()  # Вызываем метод из MainWindow
+            self.showNormal()
             self.is_maximized = True
         else:
-            self.showMaximized()  # Вызываем метод из MainWindow
+            self.showMaximized()
             self.is_maximized = False
 
     def showMaximized(self):
@@ -59,7 +57,6 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window | Qt.WindowMaximizeButtonHint)
         self.setWindowIcon(QIcon(self.config["window"]["default_icon"]))
 
-        # Тень вокруг окна
         self.shadow = QGraphicsDropShadowEffect(self)
         self.shadow.setBlurRadius(float(self.config["window"]["shadow"]["blur_radius"]))
         self.shadow.setColor(QColor(*self.config["window"]["shadow"]["color"]))
@@ -72,10 +69,8 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(0)
 
-        # Стек виджетов для переключения между экранами
         self.stacked_widget = QStackedWidget()
 
-        # Главный экран с утилитами
         self.main_screen = QScrollArea()
         self.main_screen.setWidgetResizable(True)
 
@@ -83,7 +78,6 @@ class MainWindow(QMainWindow):
         self.utilities_layout = QVBoxLayout(utilities_widget)
         self.utilities_layout.setAlignment(Qt.AlignTop)
 
-        # Список утилит
         self.utilities_list = QListWidget()
         self.utilities_list.setIconSize(QSize(64, 64))
         self.utilities_list.setSpacing(10)
@@ -93,11 +87,9 @@ class MainWindow(QMainWindow):
         self.main_screen.setWidget(utilities_widget)
         self.stacked_widget.addWidget(self.main_screen)
 
-        # Экран консоли
         self.console_screen = CustomConsole(self.config, self,self.config["themes"][self.config["window"]["theme"]])
         self.stacked_widget.addWidget(self.console_screen)
 
-        # Кнопки управления
         control_buttons = QWidget()
         buttons_layout = QHBoxLayout(control_buttons)
 
@@ -168,10 +160,8 @@ class MainWindow(QMainWindow):
         """
         Открывает окно утилиты.
         """
-        utility_window = QMainWindow(self)
-        utility_window.setWindowTitle(item.text())
-        utility_window.setCentralWidget(QTextEdit(f"Settings for {item.text()}"))
-        utility_window.show()
+        utility_window = UtilityWindow(self)
+        utility_window.exec()
 
     def show_settings(self):
         """

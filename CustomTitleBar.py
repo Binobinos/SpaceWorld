@@ -5,14 +5,11 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel
 )
 
-import MainWindow
-
 
 class CustomTitleBar(QWidget):
     """
     Кастомный заголовок окна с кнопками управления и иконкой приложения.
     """
-
     def __init__(self, parent, config):
         super().__init__(parent)
         self.config = config
@@ -21,18 +18,15 @@ class CustomTitleBar(QWidget):
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(15)
 
-        # Иконка приложения
         self.icon_label = QLabel()
         self.icon_label.setPixmap(QIcon(self.config["window"]["default_icon"]).pixmap(24, 24))
         self.icon_label.setStyleSheet("border: 1px solid #555; border-radius: 5px; padding: 2px;")
         layout.addWidget(self.icon_label)
 
-        # Заголовок окна
         self.title = QLabel(self.config["window"]["title"])
         self.title.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title, 1)
 
-        # Кнопки управления окном
         self.minimize_btn = QPushButton("-")
         self.maximize_btn = QPushButton("□")
         self.close_btn = QPushButton("×")
@@ -66,6 +60,6 @@ class CustomTitleBar(QWidget):
         """
         Обрабатывает двойной клик по заголовку окна для разворачивания.
         """
-        parent = self.parent  # Получаем ссылку на MainWindow
+        parent = self.parent
         if event.button() == Qt.LeftButton:
             parent.toggle_maximize()
