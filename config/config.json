@@ -2,7 +2,7 @@
     "window": {
         "width": 800,
         "height": 600,
-        "theme": "sunset",
+        "theme": "dark",
         "border_radius": "15px",
         "default_icon": "D:\\SpaceWorld\\config\\app_icon.png",
         "title": "Space World",
@@ -280,31 +280,7 @@
     "utilities": [
         {
             "name": "Sorted",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\app_icon.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
-        },
-        {
-            "name": "Autocliker",
-            "icon": "D:\\SpaceWorld\\config\\photo1.png"
+            "icon": ""
         },
         {
             "name": "Autocliker",
@@ -348,6 +324,66 @@
         "maximize",
         "maximize",
         "minimize",
-        "minimize"
+        "minimize",
+        "HELP",
+        "HELP",
+        "help",
+        "help",
+        "help",
+        "help",
+        "clear",
+        "clear",
+        "settings",
+        "settings",
+        "help",
+        "help",
+        "theme dark",
+        "theme dark",
+        "theme blue",
+        "theme blue",
+        "theme light",
+        "theme light",
+        "theme cyberpunk",
+        "theme cyberpunk",
+        "theme forest",
+        "theme forest",
+        "theme retro",
+        "theme retro",
+        "theme monochrome",
+        "theme monochrome",
+        "theme purple",
+        "theme purple",
+        "theme fire",
+        "theme fire",
+        "theme gold",
+        "theme gold",
+        "theme neon",
+        "theme neon",
+        "theme gradient",
+        "theme gradient",
+        "theme pastel",
+        "theme pastel",
+        "theme hitech",
+        "theme hitech",
+        "theme sunset",
+        "theme sunset",
+        "theme midnight",
+        "theme midnight",
+        "clear",
+        "clear",
+        "resize 400 500",
+        "resize 400 500",
+        "resize 400 900",
+        "resize 400 900",
+        "resize 800 600",
+        "resize 800 600",
+        "clear",
+        "clear",
+        "help",
+        "help",
+        "clear",
+        "clear",
+        "theme dark",
+        "theme dark"
     ]
 }

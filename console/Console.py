@@ -1,19 +1,17 @@
 import datetime
 import json
-import os
 import random
 import re
 import socket
 import sys
 import threading
-import time
 
 import psutil
 import speedtest
 from PySide6.QtCore import QEvent, QProcess
 from PySide6.QtGui import QColor, QTextCharFormat, QSyntaxHighlighter, QFont
 from PySide6.QtWidgets import (
-    QWidget, QTextEdit, QLineEdit, QApplication
+    QWidget, QTextEdit, QApplication
 )
 
 from SettingsDialog import *
@@ -125,7 +123,7 @@ class CustomConsole(QWidget):
   \ V  V / (_) | |  | | (_| |
    \_/\_/ \___/|_|  |_|\__,_|"""
         self.highlighter = ConsoleHighlighter(self.output.document(), theme_data)
-        self.output.append("SpaceWorld [Version 1.0.0]")
+        self.output.append("SpaceWorld [Version beta 1.0.0]")
         self.output.append("(c) Binobinos official. Все права защищены.")
         self.output.append(self.art)
         self.command_history = config.get('command_history', [])
@@ -182,7 +180,7 @@ class CustomConsole(QWidget):
             self.append_output(f"Unknown SpaceWorld command: {command}", color="#FF0000")
             return
         if command.strip().lower() == "version":
-            self.append_output("SpaceWorld Console v1.0", color="#569CD6")
+            self.append_output("SpaceWorld Console beta 1.0.0", color="#569CD6")
         elif command.startswith("datatime"):
             self.handle_spaceworld_datatime(command)
         elif command.startswith("file"):
@@ -196,9 +194,6 @@ class CustomConsole(QWidget):
             ips = self.get_all_ip_addresses()
             for ip in ips:
                 self.append_output(str(ip), color="#5cde2c")
-            speed_thread = threading.Thread(target=self.a)
-            speed_thread.start()
-
         elif command.startswith("start"):
             commands = command.split()[1:]
             for file in commands:
@@ -253,7 +248,6 @@ class CustomConsole(QWidget):
         self.append_output(f"Скорость загрузки: {download_speed:.2f} Мбит/с", color="#4EC9B0")
         self.append_output(f"Скорость выгрузки: {upload_speed:.2f} Мбит/с", color="#4EC9B0")
         self.append_output(f"Пинг: {ping:.2f} мс", color="#4EC9B0")
-        self.remove_last_line()
 
     def eventFilter(self, source, event):
         """
@@ -364,9 +358,45 @@ class CustomConsole(QWidget):
             self.config["command_history"].append(command)
             if command.lower() == "clear":
                 self.output.clear()
+                self.output.setCurrentFont(QFont("Consolas", 12))  # Явно устанавливаем шрифт
                 self.output.append("SpaceWorld [Version 1.0.0]")
                 self.output.append("(c) Binobinos official. Все права защищены.")
                 self.output.append(self.art)
+            elif command == "help":
+                text = """
+|===============================================================|
+|clear - Очищает консоль                                        |
+|echo - повторяет сообщение                                     |
+|exit - Выход из программы                                      |
+|restart - перезапуск приложения                                |
+|settings - Открывает настйроки                                 |
+|theme - Меняет тему на указанную                               |
+|resize - Изменяет размер окна                                  |
+|maximize - Открывает во весь экран                             |
+|minimize - Сворачивает приложение                              |
+|spaceworld - Категория команд SpaceWorld                       |
+|spaceworld file - подкоманды файлов                            |
+|spaceworld file create - Создает файл                          |
+|spaceworld file read - Читает и выводит содержимое файла       |
+|spaceworld file write - Записывает в файл                      |
+|spaceworld file delete - Удаляет файл                          |
+|spaceworld datatime - подкоманды времени                       |
+|spaceworld datatime time - Выводит текущие время               |
+|spaceworld datatime data - Выводит текущию дату                |
+|spaceworld datatime week - Выводит текущию неделю и день нелели|
+|spaceworld datatime year - Выводит текущий год и месяц         |
+|spaceworld dir - подкоманды директорий                         |
+|spaceworld dir create - Создает директорию                     |
+|spaceworld dir delete - Удаляет деректорию                     |
+|spaceworld ip - Выводит все ip адреса                          |
+|spaceworld speedtest - Запускает тестирование интернета        |
+|spaceworld version - Выводит текущию версию программы          |
+|spaceworld start - Запускает все файлы казанные через пробел   |
+|spaceworld random - Генерирует число от a до b                 |
+|===============================================================|
+""".strip()
+
+                self.append_output(text)
             elif command.lower().startswith("echo"):
                 self.append_output(command[4:].strip())
             elif command.lower() == "exit":
@@ -434,20 +464,6 @@ class CustomConsole(QWidget):
                     ip_addresses.append(addr.address)
 
         return ip_addresses
-
-    def a(self):
-        while True:
-            c = 0
-            for i in range(11):
-                b = ""
-                for y in range(10):
-                    for x in range(10):
-                        b += "※"
-                    b += "\n"
-                self.output.append(b)
-                for x in range(11):
-                    self.remove_last_line()
-                    time.sleep(0.1)
 
     def restart_application(self):
         """
