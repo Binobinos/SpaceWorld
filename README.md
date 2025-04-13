@@ -1,5 +1,5 @@
 
-<h1>SpaceWorld - Кастомизируемый интерфейс с консолью</h1>
+<h1>SpaceWorld - Кастомизируемый интерфейс с консолью [Beta 1.0.0]</h1>
 
 <p><img src="img/theme/blue.png" alt="SpaceWorld Screenshot" style="max-width: 100%;"></p>
 
