@@ -1,23 +1,75 @@
-name: Pylint
+name: Python Code Quality Check
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
-  build:
+  code_quality:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false 
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13"]  
+
     steps:
     - uses: actions/checkout@v4
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pylint
-    - name: Analysing the code with pylint
+        pip install pylint mypy bandit radon pydocstyle ruff pyright vulture
+        sudo apt-get install cloc
+        
+    - name: Run all code quality checks
+      id: checks
+      continue-on-error: true  
       run: |
-        pylint --fail-under=9.5 $(git ls-files '*.py')
+        FAILED=0
+        
+        echo "::group::[1/9] Running Pylint"
+        python -m pylint . --output-format=colorized || { echo "::error::Pylint failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[2/9] Running Mypy (strict)"
+        python -m mypy . --strict --show-error-codes --color-output || { echo "::error::Mypy failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[3/9] Running Bandit"
+        python -m bandit -r . || { echo "::error::Bandit failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[4/9] Running Radon"
+        python -m radon cc -s -a . || { echo "::error::Radon failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[5/9] Running pydocstyle"
+        python -m pydocstyle . || { echo "::error::pydocstyle failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[6/9] Running Cloc"
+        cloc .
+        echo "::endgroup::"
+        
+        echo "::group::[7/9] Running Ruff"
+        python -m ruff check . || { echo "::error::Ruff failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[8/9] Running Pyright"
+        python -m pyright . || { echo "::error::Pyright failed"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "::group::[9/9] Running Vulture"
+        vulture . || { echo "::error::Vulture found dead code"; FAILED=$((FAILED+1)); }
+        echo "::endgroup::"
+        
+        echo "FAILED_TESTS=$FAILED" >> $GITHUB_ENV
+        
+    - name: Check test results
+      if: env.FAILED_TESTS > 1 
+      run: |
+        echo "::error::Too many failed tests ($FAILED_TESTS). Commit rejected."
+        exit 1
