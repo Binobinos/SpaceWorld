@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.0.0 (2025-09-08)
+
+### Features
+
+- The annotation system has been updated
+  ([`c7c5b4f`](https://github.com/Binobinos/Spaceworld/commit/c7c5b4f17396cb5767cf4b5d04c72d09405b5d1a))
+
+- Update release.yml
+  ([`a43d5b2`](https://github.com/Binobinos/Spaceworld/commit/a43d5b20c735068dd249d24e2827da05825fa1f3))
+
+
 ## v1.0.0 (2025-08-21)
 
 ### Bug Fixes
