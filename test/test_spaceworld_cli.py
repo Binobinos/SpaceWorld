@@ -1,5 +1,5 @@
 from spaceworld import SpaceWorld
-from spaceworld.spaceworld_cli import annotation_depends
+from spaceworld import annotation_depends
 
 
 def test_annotation_depends():

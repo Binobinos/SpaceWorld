@@ -1,4 +1,5 @@
 # SpaceWorld
+
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://img.shields.io/pypi/v/spaceworld?color=%2334D058&label=pypi%20package)](https://pypi.org/project/spaceworld)
@@ -13,11 +14,11 @@ documentation: https://binobinos.github.io/Spaceworld
 The key features are:
 
 - Highest speed: For high-load applications
-  - Huge flexibility: The ability to customize handlers, commands, and modules
-  - Code simplicity: With all the advantages, your code remains as simple as possible
-  - Support for *args, **kwargs
-  - Extended type annotations: Use new annotations like Annotated, Literal, Union, and others
-  - Support for Validators and transformers in annotations
+    - Huge flexibility: The ability to customize handlers, commands, and modules
+    - Code simplicity: With all the advantages, your code remains as simple as possible
+    - Support for *args, **kwargs
+    - Extended type annotations: Use new annotations like Annotated, Literal, Union, and others
+    - Support for Validators and transformers in annotations
 
 # Install Spaceworld
 
@@ -96,6 +97,7 @@ $ python spaceworld_.py hello bino
 
 Hello bino
 ```
+
 # Async command
 
 Creating an asynchronous command
@@ -119,6 +121,7 @@ if __name__ == '__main__':
 Copy that to a file main.py.
 
 Test it:
+
 ```shell
 $ python .\main.py sleep 1
 
@@ -163,6 +166,7 @@ if __name__ == '__main__':
 Copy that to a file main.py.
 
 Test it:
+
 ```shell
 $ python .\main.py check 1
 
@@ -186,7 +190,7 @@ Error in the Annotated validation for `-1`: Arg: -1, Error: The user must be ove
 
 ---
 
-# New features in v1.0.0
+# New features in v2.0.0
 
 ## The decorators' style
 

@@ -35,7 +35,7 @@ type Args = Annotated[list[Arg], "Unprepared args. Represents a tuple of strings
 type TupleArgs = Annotated[tuple[Arg, ...], "A tuple of untrained arguments"]
 
 type Kwargs = Annotated[
-    dict[str, bool | str],
+    dict[str, bool | str | list[str]],
     "Unprepared kwargs",
     "Represents a dictionary key(str) value(bool | str) - bool for prefetching flags",
 ]

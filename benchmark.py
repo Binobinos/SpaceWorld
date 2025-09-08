@@ -22,7 +22,7 @@ from typing import Dict, List, Callable, Any, Optional, Set
 import click
 import cloup
 import fire
-import typer
+import typer_
 from rich.box import ROUNDED
 from rich.columns import Columns
 from rich.console import Console
@@ -118,8 +118,6 @@ class BenchmarkLibrary:
     def _get_version(self) -> str:
         if self.name == 'testfunc':
             return '1.0'
-        elif self.name == 'spaceworld':
-            return spaceworld.__version__
         try:
             return version(self.name)
         except:

@@ -1,9 +1,10 @@
 """The main module Of SpaceWorld That implements the basic logic of the framework."""
 
+import inspect
 import shlex
 import sys
 from collections.abc import Callable
-from typing import Annotated, Never, TypedDict, Unpack
+from typing import Never, TypedDict, Unpack
 
 from ._types import (
     Args,
@@ -15,48 +16,47 @@ from ._types import (
     UserAny,
 )
 from .annotation_manager import AnnotationManager
-from .commands.base_command import BaseCommand
-from .exceptions.annotations_error import AnnotationsError
-from .exceptions.command_error import CommandCreateError
-from .exceptions.module_error import ModuleCreateError
-from .exceptions.spaceworld_error import ExitError
-from .module.base_module import BaseModule
-from .utils.util import annotation_depends, BaseCommandAnnotated, register
-from .writers.my_writer import MyWriter
-from .writers.writer import Writer
+from .annotations_error import AnnotationsError
+from .base_command import BaseCommand
+from .base_module import BaseModule
+from .module import Module
+from .my_writer import MyWriter
+from .spaceworld_error import ExitError
+from .util import BaseCommandAnnotated
+from .writer import Writer
 
 
 class CommandCacheEntry(TypedDict):
     """A class for caching command arguments."""
 
     args: list[str] | tuple[str, ...]
-    command: None | BaseCommand
-    module: None | BaseModule
+    command: BaseCommand | None
+    module: BaseModule | None
 
 
-class SpaceWorld:
+class SpaceWorld(Module):
     """The main class of the SpaceWorld Framework."""
 
     __slots__ = (
-        "name",
         "di",
         "command_history",
         "writer",
-        "commands",
-        "modules",
-        "confirmation_command",
+        "_confirmation_command",
         "command_cache",
         "handlers",
-        "docs",
-        "versions",
+        "version",
+        "system_flags",
+        "_options_help",
+        "_errors_help",
     )
 
     def __init__(
             self,
-            writer: None | Writer = None,
-            name: str = "",
-            versions: str = "",
-            docs: str = "",
+            writer: Writer | None = None,
+            version: str = "",
+            *,
+            func: DynamicCommand | None = None,
+            **opt: Unpack[BaseCommandAnnotated],
     ) -> None:
         """
         Initialize the SpaceWorld instance.
@@ -71,7 +71,7 @@ class SpaceWorld:
             mode (str): Current operation mode (default: "normal").
             waiting_for_confirmation (bool): Flag indicating if waiting for user confirmation.
             confirm_message (list[str] | None): Message to display when confirmation is needed.
-            confirmation_command (str | None): Command to execute upon confirmation.
+            _confirmation_command (str | None): Command to execute upon confirmation.
             command_cache (Dict[str, dict[str, BaseCommand | list[str]] | bool]):
                 Cache for command data.
             args_cache (Dict[tuple, tuple]): Cache for command arguments.
@@ -82,278 +82,159 @@ class SpaceWorld:
             - Automatically adds annotations for self and the writer instance.
             - Uses MyWriter as default if no writer is provided.
         """
-        self.commands: dict[str, BaseCommand] = {}
-        self.modules: dict[str, BaseModule] = {}
-        self.name = name
-        self.docs = docs
-        self.versions = versions
+        super().__init__(func=func, **opt)
+        self.version: str = version
         self.handlers: dict[str, Callable[..., None | ExitError | UserAny | Never]] = {}
         self.command_cache: dict[TupleArgs, CommandCacheEntry] = {}
+        self.system_flags: set[str] = set()
+        self._options_help = []
+        self._errors_help = []
         self.di: AnnotationManager = AnnotationManager()
         self.writer: Writer = writer or MyWriter()
-        self.confirmation_command: TupleArgs | None = None
+        self._confirmation_command: TupleArgs | None = None
         self.di.add_custom_transformer(SpaceWorld, lambda _: self)
         self.di.add_custom_transformer(Writer, lambda _: self.writer)
-        self.handler(name="help.command")(self._write_help)
-        self.handler(name="help")(self.help_handler)
-        self.handler(name="confirm.handle")(self._handle_confirm)
         self.handler(name="deprecated.handle")(self._write_deprecated)
-        self.handler(name="errors.handle")(self.error_handler)
+        self.handler(name="error")(self._handle_error)
+        self._add_system_flag(
+            "help/h", "Displays a help message", "help", self._write_help
+        )
+        self._add_system_flag(
+            "version/v",
+            "Displays the application version",
+            "version",
+            self.version_handler,
+        )
+        self._add_system_flag(
+            "force/f", "Enables confirm mode", "force", self._handle_confirm
+        )
 
-    def module(
-        self, *args: DynamicCommand | UserAny, **kwargs: UserAny
-    ) -> Callable[[DynamicCommand], BaseModule] | BaseModule:
+    def _add_system_flag(
+            self, name: str, docs: str, handler_name: str, handler: DynamicCommand
+    ):
+        name, _, short_name = name.strip().partition("/")
+        self._options_help.append(
+            f"  --{name}{f'\\-{short_name}' if short_name else ''} - {docs}"
+        )
+        self.system_flags.add(name)
+        self.system_flags.add(short_name)
+        self.handler(name=handler_name)(handler)
+
+    def _get_args_info(self) -> str:
         """
-        Create a module.
-
-        It serves as a wrapper over the decorator to support decorators with and without arguments.
-        if only one args element is passed,it returns the modified function, otherwise the decorator
-        Args:
-            *args (Callable | Any): Positional arguments for the decorator or a single function
-            **kwargs (Any): Named arguments
+        Format parameter information for help documentation.
 
         Returns:
-            Function or Decorator
+            str: Formatted parameter details with:
+                 - Parameter names
+                 - Types
+                 - Default values
         """
-        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-            func: DynamicCommand = args[0]
-            name = func.__name__
-            docs = func.__doc__ or ""
-            return self._register_module(BaseModule(name, docs))
+        return "\n".join(
+            [
+                f"  {prm.name}: {prm.annotation.__name__}"
+                for prm in self.parameters
+                if prm.kind not in {prm.KEYWORD_ONLY, prm.VAR_KEYWORD}
+                   and prm.annotation is not bool
+            ]
+        )
 
-        def decorator(func: DynamicCommand) -> BaseModule | UserAny:
-            """
-            Register a function with arguments.
+    def _get_options_info(self) -> str:
+        """
+        Format parameter information for help documentation.
 
-            Args:
-                func(): Function
+        Returns:
+            str: Formatted parameter details with:
+                 - Parameter names
+                 - Types
+                 - Default values
+        """
+        emp = inspect._empty
+        options: list[str] = self._options_help + [
+            (
+                f"  --{prm.name.replace('_', '-')}: "
+                f"{name if (name := prm.annotation.__name__) != emp else 'Any'} "
+                f"{f'= {default}' if (default := prm.default) != emp else ''}"
+            )
+            for prm in self.parameters
+            if prm.kind in {prm.KEYWORD_ONLY, prm.VAR_KEYWORD} or prm.annotation is bool
+        ]
+        return "\n\t".join(options)
 
-            Returns:
-                Function
-            """
-            name = kwargs.get("name", func.__name__)
-            docs = kwargs.get("docs", func.__doc__) or ""
-            cached = kwargs.get("cached", True)
-            return self._register_module(BaseModule(name, docs, cached))
+    def get_help_doc(self) -> str:
+        """Generate formatted help documentation for the command."""
+        examples_command = "\n\t".join(
+            f"{cmd.examples}\t{cmd.config['docs'].strip()}"
+            for cmd in self.commands.values()
+        )
+        examples_module = "\n\t".join(
+            f"{cmd.examples}\t{cmd.config['docs'].strip()}"
+            for cmd in self.modules.values()
+        )
+        msg = f"\n\t{examples_command}"
+        msg_ = f"\n\t{examples_module}"
+        args = self._get_args_info()
+        return (
+            f"{self.name} "
+            f"{f'- {self.docs.strip()} ' if self.docs.strip() else ''}"
+            f"{self.version if self.version.strip() else ''}\n\n"
+            f"{f'Commands: {msg}\n\t' if msg.strip() else ''}"
+            f"{f'Modules: {msg_}\n\t' if msg_.strip() else ''}"
+            f"{f'Args: \n{args}\n\n' if args else ''}\n"
+            f"Options: \n\t{self._get_options_info()}\n"
+            f"{f'Error Handler:\n\t{"\n\t".join(self._errors_help)}' if self._errors_help else ''}"
+        )
 
-        return decorator
+    def _handle_error(self, error: type[Exception]):
+        try:
+            self.get_handler(f"errors.{type(error).__name__}")()
+        except Exception:
+            self.writer.error(f"Error when executing the command: {str(error)}")
 
-    def command(
+    def error_handler(
         self,
-        *,
-        name: None | str = None,
-        aliases: Args | None = None,
-        big_docs: None | str = None,
-        **kwargs: Unpack[BaseCommandAnnotated],
+            error: type[Exception],
+            docs: str,
     ) -> Callable[[DynamicCommand], DynamicCommand]:
-        """
-        Decorate that registers a function as a SpaceWorld command.
-
-        This transforms a regular function into a fully-featured SpaceWorld command with:
-        - Custom naming and aliases
-        - Documentation support
-        - Mode-based activation
-        - Confirmation prompts
-        - Versioning controls
-
-        Args:
-            big_docs ():
-            name: Command name (defaults to function name)
-            aliases: Alternative command names (default: [])
-
-        Returns:
-            A decorator that registers the command
-
-        Raises:
-            CommandCreateError: If command name or aliases already exists
-        """
-        if aliases is None:
-            aliases = []
-
-        def decorator(func: DynamicCommand) -> DynamicCommand:
-            """
-            Register and returns a function.
-
-            Args:
-                func(): Function
-
-            Returns:
-                The same Function
-            """
-            func_name = (
-                name.replace("-", "_") if name else func.__name__.replace("-", "_")
-            )
-            names = aliases + [func_name]
-            if all(name in self.commands for alias in names):
-                raise CommandCreateError(f"Command '{'/'.join(names)} already exists")
-            command = BaseCommand(
-                name=func_name, aliases=aliases, big_docs=big_docs, func=func, **kwargs
-            )
-            for alias in names:
-                self.commands[alias] = command
-            return func
-
-        return decorator
-
-    def spaceworld(
-        self, target: type[UserAny] | DynamicCommand
-    ) -> UserAny | DynamicCommand:
-        """
-        Register a callable or class as commands in SpaceWorld.
-
-        This method automatically handles registration of:
-        - Classes as modules (converting methods to commands)
-        - Callable objects as individual commands
-
-        Args:
-            target: Either:
-                    - A class (converted to module with command methods)
-                    - A callable object (registered as single command)
-
-        Behavior:
-            For classes:
-            - Creates a BaseModule with the class name
-            - Registers all non-private methods as commands
-            - Skips methods starting with '_'
-
-            For callables:
-            - Registers the function directly as a command
-
-        Notes:
-            - Class methods become commands under their original names
-            - The decorator can be used both on classes and functions
-            - Private methods (starting with _) are ignored
-        """
-        module = BaseModule(name=target.__name__.replace("-", "_"))
-        return register(
-            target=target,
-            module_func=self._register_module,
-            command_func=self._register_command,
-            module=module,
-        )
-
-    def include(  # noqa
-        self, obj: Callable[..., UserAny] | BaseModule | type["SpaceWorld"]
-    ) -> Callable[..., UserAny] | BaseModule | type["SpaceWorld"]:
-        """Add modules to the SpaceWorld environment.
-
-        This method can either:
-        - Import Python packages from a directory when given a Path object
-        - Directly register module instances when provided in a list/tuple
-
-        Args:
-            obj: Either:
-                    - A pathlib.Path object pointing to a directory of Python modules
-                    - A list or tuple of pre-initialized BaseModule instances
-
-        Behavior:
-            - When given a Path:
-                * Creates the directory if it doesn't exist
-                * Attempts to import all .py files in the directory as modules
-                * Silently skips files that fail to import or register
-            - When given a list/tuple:
-                * Directly registers each provided module
-
-        Returns:
-            The input object after processing (for method chaining)
-
-        Notes:
-            - For directory imports:
-                * Only .py files are processed
-                * The directory becomes a Python package
-                * Modules must implement a register() function
-            - Invalid modules are silently ignored
-        """
-        if isinstance(obj, BaseModule):
-            self._register_module(obj)
-            return obj
-        if callable(obj):
-            self._register_command(obj)
-            return obj
-        if isinstance(obj, type(self)):
-            self.modules |= obj.modules
-            self.commands |= obj.commands
-            self.di.transformers |= obj.di.transformers
-            return obj
-        raise TypeError(f"Dont Support Type: {type(obj)}")
-
-    def _register_module(self, module: BaseModule) -> BaseModule:
-        """
-        Register a module in the SpaceWorld environment.
-
-        Args:
-            module: The module to register, must be an instance of BaseModule or its subclass
-
-        Raises:
-            ModuleCreateError: If either:
-                             - The provided object is not a BaseModule instance
-                             - A module with the same name is already registered
-
-        Returns:
-            None
-
-        Notes:
-            - Module names must be unique within the SpaceWorld instance
-            - The module's name is determined by its 'name' attribute
-            - Registered modules become immediately available in the environment
-        """
-        if not isinstance(module, BaseModule):
-            raise ModuleCreateError("The provided object is not a BaseModule instance")
-        name = module.name
-        if module.name in self.modules:
-            raise ModuleCreateError(
-                f"A module with name '{name}' is already registered"
-            )
-        self.modules[name] = module
-        return module
-
-    def _register_command(self, func: DynamicCommand) -> DynamicCommand:
-        """
-        Register the team in SpaceWorld.
-
-        Creates a basic BaseCommand wrapper around the function with default settings:
-        - Command name matches function name
-        - Active in all modes
-        - No aliases or special configurations
-
-        Args:
-            func: The callable to register as a command. Must have a __name__ attribute.
-
-        Raises:
-            CommandCreateError: If a command with the same name already exists.
-
-        Notes:
-            - This is an internal method typically called by other registration decorators
-            - For more control over command properties, use the @command decorator instead
-            - The created command will be active in all operation modes ('all')
-        """
-        func_name = func.__name__.replace("-", "_")
-        if func_name in self.commands:
-            raise CommandCreateError(f"Command '{func_name}' already exists")
-        self.commands[func_name] = BaseCommand(
-            name=func_name,
-            func=func,
-            activate_modes={"all"},
-            docs="",
-            history=True,
-            confirm=False,
-            examples=[],
-            deprecated=False,
-            hidden=False,
-        )
-        return func
-
-    def error_handler(self, error: type[Exception]) -> None:
         """
         Handle errors and outputs a message.
 
         Args:
+            docs ():
             error (type[Exception]): Type of error
 
         Returns:
             None
         """
-        self.writer.error(error)
+        name = error.__name__
+
+        def wrap(func):
+            self.handler(name=f"errors.{name}")(func)
+
+            return func
+
+        self._errors_help.append(
+            f"  {error}{f' - {docs.strip().title()}' if docs else ''}"
+        )
+        return wrap
+
+    def version_handler(
+            self,
+            kwargs: Kwargs | NewKwargs,
+            cmd: BaseCommand | None,
+            module: BaseModule | None,
+    ) -> None:
+        """
+        Handle errors and outputs a message.
+
+        Returns:
+            None
+        """
+        if kwargs.get("version", False) or kwargs.get("v", False):
+            self.writer.write(
+                f"{self.name.title()} version: {self.version.strip() if self.version.strip() else ''}"
+            )
+            raise ExitError
 
     def get_handler(self, name: str) -> Callable[..., UserAny]:
         """
@@ -365,6 +246,8 @@ class SpaceWorld:
         Returns:
             handler's object
         """
+        if name not in self.handlers:
+            raise KeyError(f"Handler {name} not found")
         return self.handlers[name]
 
     def handler(
@@ -404,30 +287,6 @@ class SpaceWorld:
 
         return _wraps
 
-    def help_handler(self) -> None:
-        examples_command = "\n\t".join(
-            f"{cmd.examples}\t{cmd.config['docs']}" for cmd in self.commands.values()
-        )
-        examples_module = "\n\t".join(
-            f"{cmd.examples}\t{cmd.config['docs']}" for cmd in self.modules.values()
-        )
-        msg = f"\n\t{examples_command}"
-        msg_ = f"\n\t{examples_module}"
-
-        self.writer.write(
-            (
-                f"{self.name} "
-                f"{f'- {self.docs.strip()}' if self.docs.strip() else ''} "
-                f"{self.versions if self.versions.strip() else ''}\n"
-                f"Commands: {msg}\n"
-                f"{f"Modules: {msg_}\n" if msg_.strip() else ""}"
-                "Flags: \n"
-                "\n\t--help\\-h \tDisplays the help\n"
-                "\n\t--force\\-f\tCancels confirmation\n\n"
-                "For reference on a specific command: \n"
-            )
-        )
-
     def execute(self, command: TupleArgs | Args) -> UserAny | None:
         """
         Execute a console command in the SpaceWorld environment.
@@ -449,22 +308,14 @@ class SpaceWorld:
                - None or False indicates invalid command
                - True indicates successful execution
         """
-        if not command:
-            self.get_handler("help")()
-            return None
-
-        if self.confirmation_command:
-            self._handle_confirmation(command)
-            return None
-
         try:
-            result = self.execute_command(command)
-            return result
+            if self._confirmation_command:
+                self._handle_confirmation(command)
+            return self.execute_command(command)
         except ExitError:
             return None
         except Exception as error:  # pylint: disable=W0718 # User Function
-            self.get_handler("errors.handle")(error)
-            self.writer.error(f"Error when executing the command: {error}")
+            self.get_handler("error")(error)
             return None
 
     def execute_command(
@@ -510,19 +361,18 @@ class SpaceWorld:
         """
         commands: CommandCacheEntry = self._get_command_cache(command)
         args: TupleArgs = tuple(commands["args"])
-        cmd: None | BaseCommand = commands["command"]
-        module: None | BaseModule = commands["module"]
+        cmd: BaseCommand | None = commands["command"]
+        module: BaseModule | None = commands["module"]
 
         positional_args, keyword_args, kwargs = self._get_cached_args(args, cmd, module)
-
-        self.get_handler("help.command")(kwargs, cmd, module)
+        self.get_handler("help")(kwargs, cmd, module)
+        self.get_handler("version")(kwargs, cmd, module)
 
         confirmation = kwargs.get("force", False)
-        self.get_handler("confirm.handle")(cmd, confirmation, command)
-
+        self.get_handler("force")(cmd, confirmation, command)
         self.get_handler("deprecated.handle")(cmd)
-        if not cmd:
-            raise AnnotationsError("Command not found")
+        if cmd is None:
+            cmd: DynamicCommand = module.run_command if module else self.run_command
         return cmd(*positional_args, **keyword_args)
 
     def run(self, func: DynamicCommand | None = None, args: Args | None = None) -> None:
@@ -559,49 +409,11 @@ class SpaceWorld:
             args = sys.argv[1:]
         try:
             self.execute(tuple(args))
-            while self.confirmation_command:
+            while self._confirmation_command:
                 user_input = input(">>> ")
                 self.execute(tuple(shlex.split(user_input)))
         except KeyboardInterrupt:
             sys.exit(-1)
-
-    def interactive(  # noqa
-        self, func: DynamicCommand | None = None
-    ) -> None:
-        """
-        Launch interactive mode.
-
-        Args:
-            func(): Function for the run
-        Returns:
-            None
-        """
-        if func:
-            self.spaceworld(func)
-        try:
-            while True:
-                user_input = input(">>> ")
-                if user_input in {"exit"}:
-                    break
-                self.execute(tuple(shlex.split(user_input)))
-        except KeyboardInterrupt:
-            sys.exit(-1)
-
-    def __call__(
-        self, func: DynamicCommand | None = None, args: Args | None = None
-    ) -> None:
-        """
-        Call run of the class.
-
-        It is used for convenient calling
-        Args:
-            func(): A callable object
-            args(): Arguments to call from the code
-
-        Returns:
-            None
-        """
-        self.run(func, args)
 
     def _write_help(
         self,
@@ -620,7 +432,7 @@ class SpaceWorld:
         """
         if kwargs.get("help", False) or kwargs.get("h", False):
             help_text: str = (
-                cmd.help_text if cmd else module.help_text if module else ""
+                cmd.help_text if cmd else module.help_text if module else self.help_text
             )
             self.writer.write(help_text)
             raise ExitError
@@ -628,7 +440,7 @@ class SpaceWorld:
     def _handle_confirm(
         self, cmd: BaseCommand, confirmation: bool, command: TupleArgs
     ) -> None:
-        if cmd.config["confirm"] and not confirmation:
+        if cmd and cmd.config["confirm"] and not confirmation:
             self._set_confirm_command(command, cmd)
             raise ExitError
 
@@ -656,25 +468,8 @@ class SpaceWorld:
         Returns:
             None
         """
-        deprecated = cmd.config["deprecated"]
-        if deprecated:
+        if cmd and (deprecated := cmd.config["deprecated"]):
             self.writer.warning(deprecated)
-
-    def _check_mode(  # noqa
-        self, cmd: None | BaseCommand
-    ) -> bool:
-        """
-        Check the correspondence of the command modes and console.
-
-        Args:
-            cmd(): Command object
-        Returns:
-            Matching modes(bool)
-        """
-        if not cmd:
-            return False
-        modes = cmd.config["activate_modes"]
-        return "all" not in modes  # and self.mode not in modes
 
     def _is_cached(
         self, args: TupleArgs, cmd: None | BaseCommand, module: None | BaseModule
@@ -701,17 +496,26 @@ class SpaceWorld:
             A tuple of new args and kwargs and naked kwargs
         """
         if self._is_cached(args, cmd, module):
-            keyword_args: dict[str, bool | str] = {}
+            kwargs: dict[str, bool | str] = {}
             try:
-                positional_args, keyword_args = self.di.pre_preparing_arg(args)
-                if not cmd:
-                    raise AnnotationsError("Command not found")
+                parameters = (
+                    cmd.parameters
+                    if cmd
+                    else module.parameters
+                    if module
+                    else self.parameters
+                )
+
+                positional_args, kwargs = self.di.pre_preparing_arg(
+                    args, parameters, self.system_flags
+                )
+                self.get_handler("help")(kwargs, cmd, module)
                 self.di.args_cache[args] = self.di.preparing_args(
-                    cmd.parameters, positional_args, keyword_args
+                    parameters, positional_args, kwargs, self.system_flags
                 )
             except (ValueError, IndexError, TypeError, AnnotationsError) as error:
-                self._write_help(keyword_args, cmd, module)
-                self.get_handler("errors.handle")(error)
+                self.get_handler("help")(kwargs, cmd, module)
+                self.get_handler("error")(error)
                 raise ExitError from error
         return self.di.args_cache[args]
 
@@ -749,12 +553,16 @@ class SpaceWorld:
             - Maintains separation between command and arguments
             - Uses depth-first search through module hierarchy
         """
+        if not command:
+            return {"command": None, "args": (), "module": None}
         first_arg, *args = command
         first_arg = first_arg.replace("-", "_")
         module: BaseModule | UserAny = self
         while [first_arg] + args:
             modules, commands = module.modules, module.commands
-            _module: None | BaseModule = None if module is self else module
+            _module: None | BaseModule = (
+                None if isinstance(module, type(self)) else module
+            )
             if first_arg in commands:
                 return {"command": commands[first_arg], "args": args, "module": _module}
             if first_arg in modules:
@@ -766,7 +574,7 @@ class SpaceWorld:
             else:
                 args = [first_arg.replace("_", "-")] + args
                 return {"command": None, "args": args, "module": _module}
-        return {"command": None, "args": (), "module": None}
+        return {"command": None, "args": (), "module": module}
 
     def _handle_confirmation(self, response: TupleArgs | Args) -> None:
         """
@@ -789,7 +597,7 @@ class SpaceWorld:
         Side Effects:
             - Modifies instance state:
               * waiting_for_confirmation (set to False)
-              * confirmation_command (set to None)
+              * _confirmation_command (set to None)
             - May execute pending command
             - Writes to output via writer
         """
@@ -798,6 +606,7 @@ class SpaceWorld:
             self.execute_command(response, confirmation=True)
             return
         self.writer.warning("The command has been cancelled.")
+        raise ExitError
 
     def _set_confirm_command(self, command: TupleArgs, func: BaseCommand) -> None:
         """
@@ -813,7 +622,7 @@ class SpaceWorld:
             func: The BaseCommand instance requiring confirmation
 
         Side Effects:
-            - Stores command as confirmation_command
+            - Stores command as _confirmation_command
             - Sets confirm_message from command's confirm_word
             - Displays prompt to user via writer
 
@@ -828,43 +637,23 @@ class SpaceWorld:
             - Command won't execute until confirmed
         """
         self.writer.input(func.config["confirm"])
-        self.confirmation_command = command
+        self._confirmation_command = command
 
-    @annotation_depends  # noqa
-    def set_mode(
-        self,
-        mode: Annotated[
-            str,
-            lambda mode: mode
-            if isinstance(mode, str)
-            else TypeError("Console mode must be specified as a string"),
-        ],
+    def __call__(
+            self, func: DynamicCommand | None = None, args: Args | None = None
     ) -> None:
         """
-        Set the current operating mode of the SpaceWorld console.
+        Call run of the class.
 
-        This mode affects which commands are available and how they behave.
-        Common modes might include 'normal', 'debug', or 'admin'.
-
+        It is used for convenient calling
         Args:
-            mode: The new mode to set (must be a string).
-                  This should match one of the predefined mode names
-                  used in command activation checks.
+            func(): A callable object
+            args(): Arguments to call from the code
 
-        Raises:
-            TypeError: If the provided mode is not a string.
-
-        Side Effects:
-            - Updates the internal mode state
-            - Affects which commands are available (commands may check current mode)
-            - May change console behavior depending on mode-specific implementations
-
-        Notes:
-            - Mode names are case-sensitive
-            - Commands can declare which modes they support via activate_modes
-            - Changing modes doesn't affect currently executing commands
+        Returns:
+            None
         """
-        print(mode.lower())
+        self.run(func, args)
 
 
 def run(func: DynamicCommand | None = None, args: Args | None = None) -> None:
@@ -895,12 +684,52 @@ def run(func: DynamicCommand | None = None, args: Args | None = None) -> None:
         - Handles the complete command lifecycle including confirmations
         - Default prompt for confirmations is '> '
     """
-    cns = SpaceWorld()
+    cns = SpaceWorld(func=func)
     if func:
         cns.spaceworld(func)
     if args is None:
         args = sys.argv[1:]
     cns.execute(args)
-    while cns.confirmation_command:
+    while cns._confirmation_command:
         user_input = input(">>> ")
         cns.execute(shlex.split(user_input))
+
+
+def spaceworld(
+        *args: DynamicCommand | UserAny,
+        version: str = "",
+        **kwargs: Unpack[BaseCommandAnnotated],
+) -> Callable[[DynamicCommand], SpaceWorld] | SpaceWorld:
+    """
+    Create a submodule.
+
+    It serves as a wrapper over the decorator to support decorators with and without arguments.
+    if only one args element is passed,
+    it will return the submodule object, otherwise the decorator
+
+    Args:
+        version ():
+        *args(): Positional arguments for the decorator or a single function
+        **kwargs(): Named arguments
+
+    Returns:
+        Submodule Object or Decorator
+    """
+
+    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        func: DynamicCommand = args[0]
+        return SpaceWorld(func=func, version=version)
+
+    def wrap(func: DynamicCommand) -> SpaceWorld:
+        """
+        Register and returns the SubModule.
+
+        Args:
+            func(): SubModule
+
+        Returns:
+            The same SubModule
+        """
+        return SpaceWorld(func=func, version=version, **kwargs)
+
+    return wrap

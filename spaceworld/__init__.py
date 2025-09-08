@@ -5,23 +5,17 @@ for convenient development of your teams written in Python 3.12+
 with support for asynchronous commands
 """
 
-from typing import Annotated, Any, Optional, Union
-
 from .annotation_manager import AnnotationManager
-from .commands.base_command import BaseCommand
-from .exceptions import (
-    AnnotationsError,
-    CommandCreateError,
-    CommandError,
-    ModuleCreateError,
-    ModuleError,
-    SpaceWorldError,
-    SubModuleCreateError,
-)
-from .module.base_module import BaseModule
-from .spaceworld_cli import SpaceWorld, run
-from .writers.my_writer import MyWriter
-from .writers.writer import Writer
+from .annotations_error import AnnotationsError
+from .base_command import BaseCommand
+from .base_module import BaseModule
+from .command_error import CommandError, CommandCreateError
+from .module_error import ModuleError, ModuleCreateError, SubModuleCreateError
+from .my_writer import MyWriter
+from .spaceworld_cli import SpaceWorld, run, spaceworld
+from .spaceworld_error import SpaceWorldError
+from .util import annotation_depends
+from .writer import Writer
 
 __all__ = (
     "AnnotationManager",
@@ -32,16 +26,14 @@ __all__ = (
     "run",
     "MyWriter",
     "Writer",
-    "Annotated",
-    "Union",
-    "Optional",
-    "Any",
     "ModuleError",
     "ModuleCreateError",
     "CommandError",
     "SpaceWorldError",
     "CommandCreateError",
     "SubModuleCreateError",
+    "annotation_depends",
+    "spaceworld",
 )
 
 __author__ = "binobinos"

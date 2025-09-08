@@ -7,11 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from typing import (
-    Any,
-    get_args,
-    get_origin,
-)
+from typing import Any, get_args, get_origin, is_typeddict, TypedDict
 from uuid import UUID
 
 from ._types import (
@@ -29,7 +25,7 @@ from ._types import (
     TupleArgs,
     UserAny,
 )
-from .exceptions import AnnotationsError
+from .annotations_error import AnnotationsError
 
 
 class AnnotationManager:
@@ -61,14 +57,14 @@ class AnnotationManager:
         ] = {
             int: int,
             float: float,
-            Decimal: Decimal,
-            datetime: self._convert_datetime,
-            UUID: UUID,
             str: str,
             bool: self._convert_to_bool,
+            Decimal: Decimal,
+            datetime: self._convert_datetime,
             Path: Path,
-            inspect.Parameter.empty: lambda x: x,
+            UUID: UUID,
             Any: lambda x: x,
+            inspect.Parameter.empty: lambda x: x,
             None: lambda x: x,
         }
 
@@ -114,10 +110,7 @@ class AnnotationManager:
             case None:
                 return self._annotate_base_type(annotation, arg)
             case _:
-                raise AnnotationsError(
-                    f"Unsupported type in the annotation: {annotation}"
-                )
-
+                raise AnnotationsError("")
     def _annotate_union(
         self, annotation: AttributeType, arg: AnnotateArgType
     ) -> AnnotateArgType:
@@ -139,7 +132,7 @@ class AnnotationManager:
             except AnnotationsError as error:
                 errors.append(error)
         errors_mes = [
-            f"{num} Error: {error}" for num, error in enumerate(errors, start=1)
+            f"- {num} Error: {error}" for num, error in enumerate(errors, start=1)
         ]
         message = f"\n\t{'\n\t'.join(errors_mes)}"
         message = (
@@ -183,10 +176,35 @@ class AnnotationManager:
             The final value after the transformations
         """
         args = get_args(annotation)
-        if arg not in args:
-            message = f"The value of `{arg}` does not match Literal[{'/'.join(args)}]"
-            raise AnnotationsError(message)
-        return arg
+        if arg in args:
+            return arg
+        message = f"The value of `{arg}` does not match Literal[{'/'.join(args)}]"
+        raise AnnotationsError(message)
+
+    @staticmethod
+    def validate_typed_dict(
+            items_: dict[Any, Any], class_typed_dict: type[TypedDict]
+    ) -> dict[Any, Any]:
+        if not is_typeddict(class_typed_dict):
+            raise ValueError(f"{class_typed_dict.__name__} is not a TypedDict")
+        items = items_.copy()
+        errors = []
+        for name in class_typed_dict.__required_keys__:
+            if name in items:
+                del items[name]
+                continue
+            errors.append(f"The required key `{name}` is missing")
+        for name in class_typed_dict.__optional_keys__:
+            if name in items:
+                del items[name]
+        if items:
+            extra_keys = "\n-".join(
+                [f"`{name}`: `{value}`" for name, value in items.items()]
+            )
+            errors.append(f"Extra keys: \n - {extra_keys}")
+        if errors:
+            raise ValueError("\n - ".join(errors))
+        return items_
 
     def _annotate_base_type(
         self, annotation: AttributeType, arg: AnnotateArgType
@@ -244,11 +262,13 @@ class AnnotationManager:
         Returns:
             The final argument
         """
-        valid_values = [e.value for e in annotation]
-        if arg not in valid_values:
-            message = f"The value of `{arg}` does not match the Enum[{'/'.join(valid_values)}]"
-            raise AnnotationsError(message)
-        return annotation(arg)
+        valid_values = {e.value for e in annotation}
+        if arg in valid_values:
+            return annotation(arg)
+        message = (
+            f"The value of `{arg}` does not match the Enum[{'/'.join(valid_values)}]"
+        )
+        raise AnnotationsError(message)
 
     @staticmethod
     def _convert_to_bool(value: AnnotateArgType) -> bool:
@@ -313,7 +333,7 @@ class AnnotationManager:
         """
         value = func(arg)
         if isinstance(value, BaseException):
-            raise AnnotationsError(value)
+            raise AnnotationsError(str(value)) from value
         if value is False:
             message = f"Failed validation for `{arg}` in the lambda function"
             raise AnnotationsError(message)
@@ -321,50 +341,216 @@ class AnnotationManager:
             return arg
         return value
 
-    def pre_preparing_arg(self, args: TupleArgs) -> tuple[Args, Kwargs]:
+    def pre_preparing_arg(
+            self, args: TupleArgs, parameters: Parameters, default_flags: list[str]
+    ) -> tuple[Args, Kwargs]:
         """
         Prepare arguments.
 
         into a tuple of named and positional arguments
         Args:
+            default_flags ():
+            parameters ():
             args(): A bare list of arguments
 
         Returns:
             tuple of named and positional arguments
         """
+        errors = []
         positional_args: Args = []
         keyword_args: Kwargs = {}
+        waiting_flag: str | None = None
+        params: dict[str, inspect.Parameter] = {
+            param.name: param for param in parameters
+        }
+        check_flag = True
         for arg in args:
-            if not arg.startswith("-"):
-                positional_args.append(arg)
-                continue
-            if not arg.startswith("--"):
-                self._preparing_short_flag(arg, positional_args, keyword_args)
-                continue
-            arg = arg[2:]
-            if "=" in arg:
-                self._preparing_value_flag(arg, keyword_args)
-                continue
-            self._preparing_bool_flag(arg, keyword_args)
+            try:
+                if not check_flag:
+                    positional_args.append(arg)
+                    continue
+                if not arg.startswith("-"):
+                    if waiting_flag is not None:
+                        type_param = params.get(waiting_flag)
+                        if (
+                                type_param
+                                and type_param.annotation is not type_param.empty
+                                and type_param.annotation is bool
+                        ):
+                            raise TypeError("The Boolean-flag may not matter")
+                        self.set_kwargs_value(
+                            waiting_flag, arg, keyword_args, type_param
+                        )
+                        waiting_flag = None
+                    else:
+                        positional_args.append(arg)
+                    continue
+                if not arg.startswith("--"):
+                    waiting_flag = self._preparing_short_flag(
+                        arg,
+                        positional_args,
+                        keyword_args,
+                        params,
+                        default_flags,
+                        waiting_flag,
+                    )
+                    continue
+                if arg == "--":
+                    check_flag = False
+                    continue
+                arg = arg[2:]
+                if "=" in arg:
+                    self._preparing_value_flag(arg, keyword_args, params)
+                    waiting_flag = None
+                    continue
+                if waiting_flag:
+                    waiting_flag = None
+                    raise TypeError(
+                        "The pending flag has not received a value before moving on to the next flag."
+                    )
+                is_no: bool = arg.startswith("no-")
+                name: str = arg[3:].replace("-", "_") if is_no else arg
+                waiting_flag = self._preparing_bool_flag(
+                    name, is_no, keyword_args, default_flags, params.get(name)
+                )
+            except Exception as error:
+                errors.append(str(error))
+                waiting_flag = None
+        if waiting_flag:
+            errors.append(f"The expected flag --{waiting_flag} didn't get a value.")
+        if errors:
+            raise ValueError(f"Errors in pre-preparing args:\n- {'\n- '.join(errors)}")
         return positional_args, keyword_args
 
     @staticmethod
-    def _preparing_bool_flag(arg: Arg, keyword_args: Kwargs) -> None:
+    def set_kwargs_value(
+            name: str, value: str | bool, kwargs: Kwargs, param: inspect.Parameter
+    ):
+        name = name.replace("-", "_")
+        if name not in kwargs:
+            kwargs[name] = value
+        else:
+            if param:
+                if param.annotation is bool:
+                    raise TypeError(f"The Boolean flag --{name} cannot be overwritten")
+                origin = get_origin(param.annotation) or param.annotation
+                if origin in {
+                    list,
+                    tuple,
+                    set,
+                    frozenset,
+                    typing.List,
+                    typing.Tuple,
+                    typing.Set,
+                    typing.FrozenSet,
+                }:
+                    if not isinstance(kwargs[name], list):
+                        _value = kwargs[name]
+                        kwargs[name] = []
+                        kwargs[name].append(_value)
+                    kwargs[name].append(value)
+                else:
+                    raise TypeError(
+                        f"Redefining a non-iterable argument `{name}:{kwargs[name]}` = {value}"
+                    )
+            else:
+                if not isinstance(kwargs[name], list):
+                    _value = kwargs[name]
+                    kwargs[name] = []
+                    kwargs[name].append(_value)
+                kwargs[name].append(value)
+
+    def _preparing_bool_flag(
+            self,
+            name: str,
+            is_no: bool,
+            keyword_args: Kwargs,
+            default_flags: list[str],
+            param: inspect.Parameter,
+    ) -> str | None:
         """
         Handle bool flags.
 
         Args:
-            arg (): flag name
             keyword_args (): Dictionary of arguments
 
         Returns:
             None
         """
-        is_no: bool = arg.startswith("no-")
-        name: str = arg[3:] if is_no else arg
+        waiting_flag = name
         if not name:
             raise ValueError("Invalid flag name: Empty name")
-        keyword_args[name.replace("-", "_")] = not is_no
+        if waiting_flag.lower() in default_flags or (
+                param and param.annotation is not param.empty and param.annotation is bool
+        ):
+            waiting_flag = None
+            self.set_kwargs_value(name, not is_no, keyword_args, param)
+        return waiting_flag
+
+    def _preparing_value_flag(
+            self, arg: Arg, keyword_args: Kwargs, params: dict[str, inspect.Parameter]
+    ) -> None:
+        """
+        Prepare flags with the value.
+
+        Args:
+            arg(): Argument
+            keyword_args (): Dictionary of arguments
+
+        Returns:
+            None
+        """
+        name, _, value = arg.partition("=")
+        if not name:
+            raise ValueError("Invalid flag name: Empty name")
+        name = name.replace("-", "_")
+        vl = value.lower()
+        condition = self.startswith_value(vl, '"') or self.startswith_value(vl, "'")
+        value = value[1:-1] if condition else value
+        vlue = (vl == "true") if vl in {"false", "true"} else value
+        self.set_kwargs_value(name, vlue, keyword_args, params.get(name))
+
+    def _preparing_short_flag(
+            self,
+            arg: Arg,
+            positional_args: Args,
+            keyword_args: Kwargs,
+            params: dict[str, inspect.Parameter],
+            default_flags: list[str],
+            waiting_flag: bool,
+    ) -> bool:
+        """
+        Prepare a one-letter flag(-h, -abc, and the like).
+
+        Args:
+            arg(): single-letter argument
+            keyword_args ():  Dictionary of arguments
+
+        Returns:
+            None
+        """
+        try:
+            float(arg)
+            positional_args.append(arg)
+        except ValueError:
+            for name in arg[1:]:
+                if waiting_flag:
+                    raise ValueError(
+                        f"Incorrect syntax: {arg}"
+                        "You cannot use short flags with a value in a chain of short flags. "
+                        f"Use: {' '.join(f'-{name} value' for name in arg[1:])}"
+                    )
+                name = name.lower()
+                waiting_flag = name
+                param = params.get(name)
+                if waiting_flag.lower() in default_flags or (
+                        param
+                        and param.annotation is not param.empty
+                        and param.annotation is bool
+                ):
+                    waiting_flag = None
+                    self.set_kwargs_value(name, True, keyword_args, param)
+        return waiting_flag
 
     @staticmethod
     def startswith_value(value: str, sym: str) -> bool:
@@ -380,53 +566,12 @@ class AnnotationManager:
         """
         return value.startswith(sym) and value.endswith(sym)
 
-    def _preparing_value_flag(self, arg: Arg, keyword_args: Kwargs) -> None:
-        """
-        Prepare flags with the value.
-
-        Args:
-            arg(): Argument
-            keyword_args (): Dictionary of arguments
-
-        Returns:
-            None
-        """
-        name, _, value = arg.partition("=")
-        if not name:
-            raise ValueError("Invalid flag name: Empty name")
-        vl = value.lower()
-        condition = self.startswith_value(vl, '"') or self.startswith_value(vl, "'")
-        value = value[1:-1] if condition else value
-        vlue = (vl == "true") if vl in ["false", "true"] else value
-        keyword_args[name.replace("-", "_")] = vlue
-
-    @staticmethod
-    def _preparing_short_flag(
-        arg: Arg, positional_args: Args, keyword_args: Kwargs
-    ) -> None:
-        """
-        Prepare a one-letter flag(-h, -abc, and the like).
-
-        Args:
-            arg(): single-letter argument
-            keyword_args ():  Dictionary of arguments
-
-        Returns:
-            None
-        """
-        try:
-            float(arg)
-            positional_args.append(arg)
-            return
-        except ValueError:
-            for name in arg[1:]:
-                keyword_args[name.lower()] = name.islower()
-
     def preparing_args(
         self,
         parameters: Parameters,
         positional_args: Args | NewArgs,
         keyword_args: Kwargs | NewKwargs,
+            system_flag: set[str],
     ) -> CacheType:
         """
         Process raw command arguments into properly typed and structured parameters.
@@ -439,6 +584,7 @@ class AnnotationManager:
         - Special flag processing (--no-*, -x, etc.)
 
         Args:
+            system_flag ():
             positional_args ():
             keyword_args ():
             parameters: List of command parameter specifications from inspection
@@ -476,32 +622,79 @@ class AnnotationManager:
         positional_args_index: int = 0
         new_args_positional: NewArgs = []
         new_args_keyword: NewKwargs = {}
+        errors = {}
         for param in parameters:
             param_name = param.name
-            match param.kind:
-                case param.VAR_POSITIONAL:
-                    self.preparing_var_positional(
-                        positional_args, new_args_positional, param
-                    )
-                    positional_args_index = len(positional_args)
+            try:
+                match param.kind:
+                    case param.VAR_POSITIONAL:
+                        print(positional_args)
+                        self.preparing_var_positional(
+                            positional_args, new_args_positional, param
+                        )
+                        positional_args_index = len(positional_args)
+                    case param.KEYWORD_ONLY if param_name in keyword_args:
+                        value = keyword_args.pop(param_name)
+                        new_args_keyword[param_name] = self.preparing_annotate(
+                            param, value
+                        )
+                    case param.VAR_KEYWORD:
+                        self.preparing_var_keyword(
+                            keyword_args, new_args_keyword, param
+                        )
+                    case _ if param_name in keyword_args:
+                        value = keyword_args.pop(param_name)
+                        new_args_keyword[param_name] = self.preparing_annotate(
+                            param, value
+                        )
+                    case _ if (
+                            positional_args_index < len(positional_args)
+                            and param.kind != param.KEYWORD_ONLY
+                    ):
+                        value = positional_args.pop(0)
+                        new_args_positional.append(
+                            self.preparing_annotate(param, value)
+                        )
 
-                case param.KEYWORD_ONLY if param_name in keyword_args:
-                    value = keyword_args.pop(param_name)
-                    new_args_keyword[param_name] = self.preparing_annotate(param, value)
-
-                case param.VAR_KEYWORD:
-                    self.preparing_var_keyword(keyword_args, new_args_keyword, param)
-                case _ if param_name in keyword_args:
-                    value = keyword_args.pop(param_name)
-                    new_args_keyword[param_name] = self.preparing_annotate(param, value)
-                case _ if positional_args_index < len(positional_args):
-                    value = positional_args.pop(0)
-                    new_args_positional.append(self.preparing_annotate(param, value))
-
-                case _ if param.default != param.empty:
-                    self.preparing_default(new_args_positional, new_args_keyword, param)
-                case _:
-                    raise TypeError(f"Missing required argument: '{param_name}'")
+                    case _ if param.default != param.empty:
+                        self.preparing_default(
+                            new_args_positional, new_args_keyword, param
+                        )
+                    case _:
+                        raise KeyError(
+                            f"Missing required "
+                            f"{
+                            'argument'
+                            if param.kind
+                               in {
+                                   param.kind.POSITIONAL_ONLY,
+                                   param.kind.POSITIONAL_OR_KEYWORD,
+                               }
+                            else 'flag'
+                            }: '{param_name}'"
+                        )
+            except Exception as error:
+                errors[param_name] = str(error)
+        if (
+                errors
+                or positional_args
+                or (
+                keyword_args
+                and not (any(keyword_args.get(name) for name in system_flag))
+        )
+        ):
+            msgs = [
+                f"Errors in preparing args:\n-{'\n-'.join([f"'{name}': {error}" for name, error in errors.items()])} "
+                if errors
+                else "",
+                f"Unnecessary positional arguments: '{', '.join(positional_args)}'"
+                if positional_args
+                else "",
+                f"Unnecessary named arguments: '{', '.join(keyword_args)}'"
+                if keyword_args
+                else "",
+            ]
+            raise ValueError("\n".join(msg for msg in msgs if msg))
         return new_args_positional, new_args_keyword, keyword_args
 
     def preparing_annotate(self, prm: Parameter, value: UserAny) -> AnnotateArgType:
@@ -522,7 +715,7 @@ class AnnotationManager:
                 else value
             )
         except Exception as e:
-            raise ValueError(f"Invalid argument for '{prm.name}': \n{e}") from e
+            raise TypeError(f"Invalid argument for '{prm.name}': \n{e}") from e
 
     def preparing_var_positional(
         self, new_args: Args, new_args_positional: NewArgs, prm: Parameter
@@ -543,6 +736,7 @@ class AnnotationManager:
             if prm.annotation != prm.empty
             else new_args
         )
+        new_args.clear()
 
     def preparing_var_keyword(
         self, lst: Kwargs, new_args_keyword: NewKwargs, prm: Parameter

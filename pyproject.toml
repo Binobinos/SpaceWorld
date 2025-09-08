@@ -2,6 +2,47 @@
 requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "spaceworld"
+dynamic = ["version"]
+authors = [
+    { name = "binobinos", email = "binobinos.dev@gmail.com" },
+]
+description = "Spaceworld is a new generation Cli framework for convenient development of your teams written in Python 3.12+ with support for asynchronous commands"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+keywords = ["python", "shell", "cli", "performance", "terminal", "async", "python3", "typehints", "spaceworld"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Topic :: System :: Shells",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Terminals",
+    "Topic :: Software Development :: User Interfaces",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pyttsx3>=2.99",
+]
+
+[project.scripts]
+spaceworld = "spaceworld.cli:main"
+sw = "spaceworld.cli:main"
+
 [tool.black]
 line-length = 140
 target-version = ['py312']
@@ -86,36 +127,12 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --cov=core --cov-report=xml"
 
-[project]
-name = "spaceworld"
-version = "0.1.2"
-authors = [
-    {name = "binobinos", email = "binobinos.dev@gmail.com"},
-]
-description = "Spaceworld is a new generation Cli framework for convenient development of your teams written in Python 3.12+ with support for asynchronous commands"
-readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.12"
-keywords = ["python", "shell", "cli", "performance", "terminal", "async", "python3", "typehints", "spaceworld"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Intended Audience :: System Administrators",
-    "Topic :: Software Development :: Libraries :: Application Frameworks",
-    "Topic :: Terminals",
-    "Topic :: Utilities",
-    "Typing :: Typed",
-]
-
 [project.urls]
-Bug_Tracker = "https://github.com/Binobinos/SpaceWorld/issues"
-Source_Code = "https://github.com/Binobinos/SpaceWorld"
-Changelog = "https://github.com/Binobinos/SpaceWorld/releases"
+Homepage = "https://github.com/Binobinos/SpaceWorld"
+Changelog = "https://github.com/Binobinos/Spaceworld/blob/main/CHANGELOG.md"
+Releases = "https://github.com/Binobinos/SpaceWorld/releases"
+Documentation = "https://spaceworld.binobinos.com/"
+Bug = "https://github.com/Binobinos/SpaceWorld/issues"
 
 
 [tool.setuptools]
@@ -124,9 +141,8 @@ zip-safe = false
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["spaceworld*"]
-exclude = ["test*", "tests*", "docs*", "examples*"]
+include = ["spaceworld"]
 
 [tool.setuptools.package-data]
 spaceworld = ["py.typed"]
-"*" = ["*.py", "**/*.py", "*.txt", "**/*.txt", "*.json", "**/*.json"]
+"*" = ["*.py", "**/*.py"]
