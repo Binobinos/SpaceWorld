@@ -4,7 +4,7 @@ from inspect import signature
 from typing import Unpack
 
 from ._types import Parameters, UserAny, Args, DynamicCommand
-from .util import BaseCommandAnnotated, BaseCommandConfig
+from .utils import BaseCommandAnnotated, BaseCommandConfig
 
 
 class Command(ABC):
@@ -51,13 +51,19 @@ class Command(ABC):
         docs = opt.get("docs") or (self.func.__doc__ if self.func is not None else "")
         self.aliases: Args = aliases or []
         self._examples = opt.get("examples", "")
-
+        confirm = (
+            opt.get("confirm")
+            if isinstance(opt.get("confirm"), str)
+            else "Confirm the execution of the command"
+            if opt.get("confirm")
+            else False
+        )
         self.config: BaseCommandConfig = {
             "activate_modes": opt.get("activate_modes", {"normal"}),
             "hidden": opt.get("hidden", False),
             "deprecated": opt.get("deprecated", False),
             "big_docs": big_docs or docs or "",
-            "confirm": opt.get("confirm", ""),
+            "confirm": confirm,
             "history": opt.get("history", True),
             "is_async": None,
             "docs": docs or "",
@@ -92,7 +98,7 @@ class Command(ABC):
     def is_async(self) -> bool:
         """Check if command is asynchronous."""
         if self.func is None:
-            raise RuntimeError("The function is not defined")
+            raise RuntimeError(f"For command {self.name} the function is not defined")
         if self._is_async is None:
             self._is_async = iscoroutinefunction(self.func)
         return self._is_async
@@ -101,7 +107,7 @@ class Command(ABC):
     def parameters(self) -> Parameters:
         """Get function parameters signature."""
         if self.func is None:
-            raise RuntimeError("The function is not defined")
+            raise RuntimeError(f"For command {self.name} the function is not defined")
         if self._parameters is None:
             self._parameters = tuple(signature(self.func).parameters.values())
         return self._parameters
@@ -140,7 +146,7 @@ class Command(ABC):
             None
         """
         if self.func is None:
-            raise RuntimeError("The function is not defined")
+            raise RuntimeError(f"For command {self.name} the function is not defined")
         if not self.is_async:
             return self.func(*args, **kwargs)
 

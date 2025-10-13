@@ -21,8 +21,7 @@ class TestSpaceWorld:
         assert _module.name == "module"
         assert _module.docs == "The module for the test"
 
-        new_module = cns.module(name="new_module",
-                                docs="Documentation module")(module)
+        new_module = cns.module(name="new_module", docs="Documentation module")(module)
         assert new_module.name == "new_module"
         assert new_module.docs == "Documentation module"
 

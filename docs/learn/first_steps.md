@@ -1,171 +1,146 @@
+
 # First Steps
 
-The simplest example
+Let's start with the simplest example to get familiar with SpaceWorld.
+
+## Your First Command
 
 ```python
-import spaceworld
+from spaceworld import run
 
 
+@run
 def main():
     print("Hello World")
-
-
-if __name__ == '__main__':
-    spaceworld.run(main)
 ```
-Copy that to a file main.py.
 
-Test it:
-```
-$ python main.py main
+Copy this code into a file called `main.py` and run it:
 
+```shell
+$ python main.py
 Hello World
 
-$ python main.py main --help
-
-$ python main.py main bino 12 --help
-
-Usage: main [OPTIONS]  
+$ python main.py --help
+Usage: main [OPTIONS]
 Activated modes: All
-
 ```
-# One Cli argument
-This output for the function looks very simple. 
-Let's create a new function. hello, which displays a welcome message to the user
+
+## Adding Your First Argument
+
+Now let's make our command more useful by adding a name parameter:
+
 ```python
-import spaceworld
+from spaceworld import run
 
 
+@run
 def hello(name: str):
     print(f"Hello {name}")
-
-
-if __name__ == '__main__':
-    spaceworld.run(hello)
 ```
-Now let's run this script and see what happens.
-```shell
-$ python spaceworld_.py hello
 
+When we run this, something interesting happens:
+
+```shell
+$ python main.py hello
 ERROR: Missing required argument: 'name'
 ```
-We see an error due to the absence of the name argument. Let's welcome bino
-```shell
-$ python spaceworld_.py hello bino
 
+SpaceWorld tells us exactly what's missing! Let's provide the name:
+
+```shell
+$ python main.py hello bino
 Hello bino
 ```
-Great! 
-As we can see, we entered the hello command with the bino argument and the script displayed greeting messages to him.
 
-But what if we want to make a conclusion in big letters? Then let's add a flag.
+Great! The command now greets us personally. But what if we want the greeting in uppercase? Let's add a flag for that.
 
-# Adding the first flag
+## Working with Flags
 
-So we've come to an interesting section of the CLI - Flags! 
-This is a vast topic, but let's change our existing feature first.
+Flags are special command-line arguments that start with `--`. Let's add an `upper` flag to control capitalization:
 
 ```python
-import spaceworld
+from spaceworld import run
 
 
+@run
 def hello(name: str, upper: bool):
     if upper:
-        print(f"Hello {name}".upper())
+        print(f"HELLO {name.upper()}")
     else:
         print(f"Hello {name}")
-
-
-if __name__ == '__main__':
-    spaceworld.run(hello)
 ```
-For now, we've just added a new argument to the hello function called upper, which is of type bool. 
-Let's call it up in the console and see what happens.
+
+Now let's test it:
 
 ```shell
-$ python spaceworld_.py hello bino
-
+$ python main.py hello bino
 ERROR: Missing required argument: 'upper'
-```
-To begin with, we see that we have omitted the upper argument. 
-To call it, we will need a special designation starting with a double dash.
-```shell
-$ python spaceworld_.py hello bino --upper
 
+$ python main.py hello bino --upper
 HELLO BINO
 ```
-We see that by adding the --upper designation, the text has become written in capital letters.  
-In order to understand why this worked, I need to explain what flags are and how they work.
-Flags are an argument starting with a double dash. 
-I can divide them into two types. Flags and flags with meaning. 
-How do they differ? 
-Let's take the already well-known --help flag and understand what it does. 
-When we add it to a command in a command or module call, 
-we usually see its description, usage examples, and other information. 
-But it is not the description itself that is important to us, but rather the essence of the work. 
-By specifying this flag, 
-we tell the CLI: "Hey buddy, I need a hint on this command!". 
-That is, the very fact of the presence of this argument indicates actions. 
-I call this the Bool flag. 
-Such flags indicate their meaning by their presence or absence. 
-Let's go back to the example with --help. 
-The very fact of its presence indicates a positive value (True) that you need to output the help, 
-and its absence means False. 
-If you understand the essence of bool flags, 
-it is important to remember that such flags are indicated by a simple double dash at the beginning followed by the name of the argument. As in the already jammed case with --help, a double dash is a designation, and help is a name. Now, after explaining the flags for a long time, the second type will seem just as simple. I call them flags with a value. Flags with a value are the second type of flags. My framework uses the notation --name=value, where there is a double dash first, the argument name, the equal sign, and the value after. But it's worth noting that other frameworks have a different notation without an equal sign. The point here is simple. There is a name and a meaning. Nothing else.
-# The order of the arguments
-In SpaceWorld, the order of flags and positional arguments is not important. 
-I'll give you an example, but first we'll update the code and add more arguments.
+
+Perfect! The `--upper` flag converted our greeting to uppercase.
+
+### Understanding Flags
+
+There are two main types of flags in SpaceWorld:
+
+1. **Boolean Flags** (like `--upper` and `--help`)
+    - Their presence means `True`
+    - Their absence means `False`
+    - Format: `--flagname`
+
+2. **Value Flags** (for passing specific values)
+    - Format: `--name=value`
+    - Example: `--count=5` or `--file=data.txt`
+
+## Adding More Features
+
+Let's expand our hello command with more options:
 
 ```python
-import spaceworld
+from spaceworld import run
 
 
-def hello(name: str, age: int, upper: bool, hi: bool = False):
-    string = f"{"Hi" if hi else "Hello"} {name}! You are {age} years old!"
-    print(string.upper() if upper else string)
-
-
-if __name__ == '__main__':
-    spaceworld.run(hello)
+@run
+def hello(name: str, age: int, upper: bool, informal: bool = False):
+    greeting = "Hi" if informal else "Hello"
+    message = f"{greeting} {name}! You are {age} years old!"
+    print(message.upper() if upper else message)
 ```
-I added two new arguments. These are age and the hi flag, which is set to False by default.
-Let's call this function:
+
+Now we can use it in different ways:
+
 ```shell
-$ python spaceworld_.py hello bino 15 --upper
+$ python main.py hello bino 23 --upper
+HELLO BINO! YOU ARE 23 YEARS OLD!
 
-HELLO BINO! YOU ARE 15 YEARS OLD!
+$ python main.py hello bino 23 --informal
+Hi bino! You are 23 years old!
 
-$ python spaceworld_.py hello bino 15 --upper --hi
-
-HI BINO! YOU ARE 15 YEARS OLD!
-
-$ python spaceworld_.py hello bino 15 --hi --upper
-
-HI BINO! YOU ARE 15 YEARS OLD
-
-$ python spaceworld_.py hello --hi --upper bino 15
-
-HI BINO! YOU ARE 15 YEARS OLD
-
-$ python spaceworld_.py hello --hi bino --upper 15
-
-HI BINO! YOU ARE 15 YEARS OLD
-
-$ python spaceworld_.py hello bino --hi --upper 15
-
-HI BINO! YOU ARE 15 YEARS OLD
+$ python main.py hello bino 23 --upper --informal
+HI BINO! YOU ARE 23 YEARS OLD!
 ```
-As we can see, the order of the flags and arguments does not affect the result. But what if we swap bino and 15 places?
-```shell
-$ python spaceworld_.py hello 15 bino --hi --upper
 
+## Understanding Argument Order
+
+One of SpaceWorld's nice features is that **flag order doesn't matter**. These all work the same:
+
+```shell
+$ python main.py hello bino 23 --upper --informal
+$ python main.py hello bino 23 --informal --upper
+$ python main.py hello --upper bino --informal 23
+```
+
+However, **positional argument order does matter**. Since SpaceWorld doesn't know which positional argument is which,
+they're passed in the order you provide them:
+
+```shell
+# This works: name="bino", age=23
+$ python main.py hello bino 23 --upper
+
+# This fails: name="23", age="bino" (can't convert "bino" to integer)
+$ python main.py hello 23 bino --upper
 ERROR: Invalid argument for 'age': invalid literal for int() with base 10: 'bino'
 ```
-As we can see, after changing the order of the positional arguments, an error occurred, 
-since the age argument is specified as int, and we are feeding the string bino.
----
-
-From this, we can conclude that the order of the arguments and flags among themselves is not important, unlike the order of the positional arguments, since their incorrect order may affect the logic of the function.
----
-In this section, I have shown you all the basic features for creating simple CLI applications. So let's move on.

@@ -4,9 +4,8 @@ from typing import Any, Unpack, Self
 
 from ._types import Args, DynamicCommand, UserAny, Transformer
 from .command import Command
-from .command_error import CommandCreateError
-from .module_error import ModuleCreateError
-from .util import BaseCommandAnnotated
+from .errors import CommandCreateError, ModuleCreateError
+from .utils import BaseCommandAnnotated
 
 
 class Module(Command, ABC):
@@ -307,7 +306,7 @@ class Module(Command, ABC):
             - Invalid modules are silently ignored
         """
         from .base_module import BaseModule
-        from .spaceworld_cli import SpaceWorld
+        from .spaceworld import SpaceWorld
 
         if isinstance(obj, BaseModule):
             self._submodule(obj)
@@ -319,12 +318,12 @@ class Module(Command, ABC):
             self.modules |= obj.modules
             self.commands |= obj.commands
             if isinstance(self, SpaceWorld):
-                self.di.transformers |= obj.di.transformers
+                self.am.transformers |= obj.am.transformers
             return obj
         raise TypeError(f"Dont Support Type: {type(obj)}")
 
     def run_command(self, *args: UserAny, **kwargs: UserAny) -> UserAny:
         """Execute the module's function if it exists."""
         if self.func is None:
-            raise RuntimeError("The function is not defined")
+            raise RuntimeError(f"For module {self.name} the function is not defined")
         return super().__call__(*args, **kwargs)

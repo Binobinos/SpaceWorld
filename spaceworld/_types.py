@@ -2,8 +2,14 @@
 
 import inspect
 from collections.abc import Callable
-from typing import Any, Annotated
+from typing import Any, Annotated, ParamSpec, TypeVar
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
+DynamicCommand = Annotated[
+    Callable[[P], T], "Represents any user's command with an arbitrary signature"
+]
 type UserAny = Annotated[
     Any,
     """This type means that the annotation is Any, 
@@ -15,12 +21,8 @@ type AnnotateArgType = Annotated[
     "Returns the same or modified argument",
 ]
 
-type DynamicCommand = Annotated[
-    Callable[..., UserAny], "Represents any user's command with an arbitrary signature"
-]
-
 type Transformer = Annotated[
-    Callable[[UserAny], UserAny],
+    DynamicCommand,
     "The transformer object is callable. Takes one value and rotates the changed one"
     "It can serve as a validator in lambda if it returns bool",
 ]
@@ -37,7 +39,7 @@ type TupleArgs = Annotated[tuple[Arg, ...], "A tuple of untrained arguments"]
 type Kwargs = Annotated[
     dict[str, bool | str | list[str]],
     "Unprepared kwargs",
-    "Represents a dictionary key(str) value(bool | str) - bool for prefetching flags",
+    "Represents a dictionary key(str) value(bool | str | list[str]) - bool for prefetching flags",
 ]
 
 type NewArgs = Annotated[

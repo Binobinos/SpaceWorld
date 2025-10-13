@@ -6,15 +6,22 @@ with support for asynchronous commands
 """
 
 from .annotation_manager import AnnotationManager
-from .annotations_error import AnnotationsError
 from .base_command import BaseCommand
 from .base_module import BaseModule
-from .command_error import CommandError, CommandCreateError
-from .module_error import ModuleError, ModuleCreateError, SubModuleCreateError
-from .my_writer import MyWriter
-from .spaceworld_cli import SpaceWorld, run, spaceworld
-from .spaceworld_error import SpaceWorldError
-from .util import annotation_depends
+from .errors import (
+    AnnotationsError,
+    ModuleError,
+    CommandError,
+    SpaceWorldError,
+    CommandCreateError,
+    SubModuleCreateError,
+    ModuleCreateError,
+    ExitError,
+)
+from .parser_manager import ParserManager
+from .spaceworld import SpaceWorld, run, spaceworld
+from .utils import annotation_depends
+from .writer import Writer
 from .writer import Writer
 
 __all__ = (
@@ -24,12 +31,13 @@ __all__ = (
     "BaseModule",
     "BaseCommand",
     "run",
-    "MyWriter",
     "Writer",
     "ModuleError",
     "ModuleCreateError",
     "CommandError",
+    "ParserManager",
     "SpaceWorldError",
+    "ExitError",
     "CommandCreateError",
     "SubModuleCreateError",
     "annotation_depends",

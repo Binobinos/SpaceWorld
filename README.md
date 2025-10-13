@@ -8,7 +8,8 @@
 teams written in Python 3.12+ with support for asynchronous commands**
 
 Source Code: https://github.com/Binobinos/SpaceWorld
-documentation: https://binobinos.github.io/Spaceworld
+
+documentation: https://github.com/Binobinos/SpaceWorld/docs/README.md
 
 The key features are:
 
@@ -34,15 +35,13 @@ pip install spaceworld
 The simplest example
 
 ```python
-import spaceworld
+from spaceworld import run
 
 
+@run
 def main():
     print("Hello World")
 
-
-if __name__ == '__main__':
-    spaceworld.run(main)
 ```
 
 Copy that to a file main.py.
@@ -50,11 +49,11 @@ Copy that to a file main.py.
 Test it:
 
 ```
-$ python main.py main
+$ python main.py
 
 Hello World
 
-$ python main.py main --help
+$ python main.py --help
 
 Usage: main [ARGS] [OPTIONS]  
 None documentation
@@ -70,21 +69,19 @@ This output for the function looks very simple.
 Let's create a new function. hello, which displays a welcome message to the user
 
 ```python
-import spaceworld
+from spaceworld import run
 
 
-def hello(name: str):
+@run
+def main(name: str):
     print(f"Hello {name}")
 
-
-if __name__ == '__main__':
-    spaceworld.run(hello)
 ```
 
 Now let's run this script and see what happens.
 
 ```shell
-$ python spaceworld_.py hello
+$ python spaceworld_.py 
 
 ERROR: Missing required argument: 'name'
 ```
@@ -92,7 +89,7 @@ ERROR: Missing required argument: 'name'
 We see an error due to the absence of the name argument. Let's welcome bino
 
 ```shell
-$ python spaceworld_.py hello bino
+$ python spaceworld_.py bino
 
 Hello bino
 ```
@@ -103,16 +100,13 @@ Creating an asynchronous command
 ```python
 import asyncio
 
-import spaceworld
+from spaceworld import run
 
 
-async def sleep(second: int):
+@run
+async def main(second: int = 1):
     await asyncio.sleep(second)
     print(f"Hello in {second} second")
-
-
-if __name__ == '__main__':
-    spaceworld.run(sleep)
 
 ```
 
@@ -144,19 +138,16 @@ Creating a validation Command
 
 from typing import Annotated
 
-import spaceworld
+from spaceworld import run
 
 
-def check(
+@run
+def main(
         age: Annotated[
-            int,
-            lambda x: x if x >= 18 else
-            ValueError("The user must be over 18 years old")]):
-    print(f"Hello {age} year old")
-
-
-if __name__ == '__main__':
-    spaceworld.run(check)
+          int,
+          lambda x: x if x >= 18 else
+          ValueError("The user must be over 18 years old")]):
+  print(f"Hello {age} year old")
 
 ```
 
@@ -164,7 +155,7 @@ Copy that to a file main.py.
 
 Test it:
 ```shell
-$ python .\main.py check 1
+$ python .\main.py 1
 
 ERROR:Invalid argument for 'age':
 Error in the Annotated validation for `1`: Arg: 1, Error: The user must be over 18 years old, <class 'spaceworld.exceptions.annotations_error.AnnotationsError'>      
@@ -186,18 +177,13 @@ Error in the Annotated validation for `-1`: Arg: -1, Error: The user must be ove
 
 ---
 
-# New features in v1.0.0
+# 🆕 What's new in SpaceWorld 3.0?
 
-## The decorators' style
+- Improved framework structure
 
-## Modules as a command
+- Added support for TypedDict, byte, complex, bytearray, Unpack in *args, **kwargs
 
-## Checking the number of positional and named arguments
-
-Great!
-As we can see, we entered the hello command with the bino argument and the script displayed greeting messages to him.
-
-But what if we want to make a conclusion in big letters? Then let's add a flag.
+- Fixed errors with confirm and others
 
 ## License
 

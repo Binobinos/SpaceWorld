@@ -4,73 +4,61 @@ The basic Abstract Writer class for console output.
 Inherit your class from it to create a unique output.
 """
 
-from abc import ABC, abstractmethod
-
 from ._types import UserAny
 
 
-class Writer(ABC):
+class Writer:
     """Abstract base class defining a console output writer interface with styled messaging."""
 
     __slots__ = ()
 
-    @abstractmethod
-    def write(self, *text: UserAny, prefix: str = "") -> None:
+    @staticmethod
+    def write(
+            *text: UserAny, prefix: str = "", sep: str = " ", end: str = "\n"
+    ) -> None:
         """
-        Write text to console with optional styling (colors/fonts).
+        Output raw text to console without formatting.
 
         Args:
+            end ():
+            sep ():
             prefix ():
-            *text: Content to display (accepts multiple arguments)
-
-        Note:
-            Implementing classes should handle basic string conversion of non-string types.
+            *text: Items to display (will be space-joined and string-converted)
         """
+        print(f"{prefix}{sep.join(str(item) for item in text)}", end=end)
 
-    @abstractmethod
     def info(self, *text: UserAny) -> None:
         """
-        Display informational message to console.
+        Display informational messages prefixed with 'INFO:'.
 
         Args:
-            *text: Information content (multiple arguments will be concatenated)
-
-        Note:
-            Typically displayed in neutral/style color (e.g., blue or default terminal color).
+            *text: Information content items
         """
+        self.write(*text, prefix="INFO:")
 
-    @abstractmethod
     def warning(self, *text: UserAny) -> None:
         """
-        Output a warning message to console.
+        Display warning messages prefixed with 'WARNING:'.
 
         Args:
-            *text: Warning content (accepts multiple arguments)
-
-        Note:
-            Should be visually distinct from regular messages (e.g., yellow color).
+            *text: Warning content items
         """
+        self.write(*text, prefix="WARNING:")
 
-    @abstractmethod
-    def input(self, *text: UserAny) -> None:
-        """
-        Display input prompt or input state information.
-
-        Args:
-            *text: Prompt or input-related information
-
-        Note:
-            Used when soliciting user input or showing input context.
-        """
-
-    @abstractmethod
     def error(self, *text: UserAny) -> None:
         """
-        Output an error message to console.
+        Display error messages prefixed with 'ERROR:'.
 
         Args:
-            *text: Error content (accepts multiple arguments)
-
-        Note:
-            Should be highly visible (typically red color) and distinguishable from warnings.
+            *text: Error content items
         """
+        self.write(*text, prefix="ERROR:")
+
+    def input(self, *text: UserAny) -> None:
+        """
+        Display input-related messages prefixed with 'INPUT:'.
+
+        Args:
+            *text: Input context items
+        """
+        self.write(*text, prefix="INPUT:")

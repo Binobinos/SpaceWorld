@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spaceworld"
-version = "2.0.0"
+version = "3.0.0"
 authors = [
     { name = "binobinos", email = "binobinos.dev@gmail.com" },
 ]
@@ -35,9 +35,7 @@ classifiers = [
     "Topic :: Software Development :: User Interfaces",
     "Typing :: Typed",
 ]
-dependencies = [
-    "pyttsx3>=2.99",
-]
+dependencies = []
 
 [project.scripts]
 spaceworld = "spaceworld.cli:main"
@@ -121,7 +119,7 @@ changelog_exclude_commits = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "core/tests"]
+testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
@@ -131,7 +129,6 @@ addopts = "-v --cov=core --cov-report=xml"
 Homepage = "https://github.com/Binobinos/SpaceWorld"
 Changelog = "https://github.com/Binobinos/Spaceworld/blob/main/CHANGELOG.md"
 Releases = "https://github.com/Binobinos/SpaceWorld/releases"
-Documentation = "https://spaceworld.binobinos.com/"
 Bug = "https://github.com/Binobinos/SpaceWorld/issues"
 
 
