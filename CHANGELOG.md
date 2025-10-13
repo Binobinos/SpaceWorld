@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v3.0.0 (2025-10-13)
+
+### Features
+
+- Update 3.0.0
+  ([`964f5bb`](https://github.com/Binobinos/Spaceworld/commit/964f5bb77fc2b3d139c79255d54ba067aae130db))
+
+
 ## v2.0.0 (2025-09-08)
 
 ### Features
