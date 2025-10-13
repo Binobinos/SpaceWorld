@@ -9,7 +9,7 @@ teams written in Python 3.12+ with support for asynchronous commands**
 
 Source Code: https://github.com/Binobinos/SpaceWorld
 
-documentation: https://github.com/Binobinos/SpaceWorld/docs/README.md
+[documentation](docs/README.md)
 
 The key features are:
 
